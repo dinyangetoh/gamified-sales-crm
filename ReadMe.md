@@ -24,8 +24,7 @@ You are building an internal gamification engine for sales reps. Reps perform CR
 - Framework: your choice (Express, Fastify, Nest, etc.)
 - Storage: your choice (in-memory, SQLite, Postgres, etc.)
 - Tests: required
-
-No frontend is required.
+- Frontend technology is up to candidate choice and interpretation
 
 ## Functional Requirements
 
