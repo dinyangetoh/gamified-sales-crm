@@ -13,12 +13,6 @@ You should implement an event-driven scoring system that:
 - awards badges
 - returns a weekly leaderboard
 
-## Timebox
-
-Target completion: 3 days
-
-Please prioritize correctness, clarity, and testability over breadth.
-
 ## Scenario
 
 You are building an internal gamification engine for sales reps. Reps perform CRM actions (calls, meetings, stage changes, wins), and the system rewards meaningful progress while preventing easy abuse.
