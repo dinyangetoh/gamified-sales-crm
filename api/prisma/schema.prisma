@@ -1,0 +1,235 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Identity ─────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(SALES_REP)
+  createdAt    DateTime @default(now())
+
+  stats            UserStats?
+  badgeAwards      BadgeAward[]
+  badgeProgress    BadgeProgress[]
+  weeklyStats      WeeklyStat[]
+  dailyCaps        DailyCap[]
+  crmUserMaps      CrmUserMap[]
+  notificationLogs NotificationLog[]
+  awardTimeline    AwardTimeline[]
+  events           Event[]
+}
+
+enum Role {
+  SALES_REP
+  MANAGER
+}
+
+// ─── CRM Integration ──────────────────────────────────────────────────────────
+
+model CrmIntegration {
+  id            String   @id
+  displayName   String
+  webhookSecret String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  crmUserMaps CrmUserMap[]
+}
+
+model CrmUserMap {
+  id         String   @id @default(uuid())
+  userId     String
+  provider   String
+  externalId String
+  createdAt  DateTime @default(now())
+
+  user        User           @relation(fields: [userId], references: [id])
+  integration CrmIntegration @relation(fields: [provider], references: [id])
+
+  @@unique([provider, externalId])
+  @@index([provider, externalId])
+}
+
+// ─── Events — immutable audit log ────────────────────────────────────────────
+
+model Event {
+  eventId       String    @id
+  userId        String
+  provider      String
+  eventType     EventType
+  entityId      String
+  rawPayload    Json
+  pointsAwarded Int       @default(0)
+  capReached    Boolean   @default(false)
+  timestamp     DateTime
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, eventType, timestamp])
+  @@index([userId, timestamp])
+}
+
+enum EventType {
+  LEAD_CONTACTED
+  MEETING_COMPLETED
+  STAGE_ADVANCED
+  DEAL_WON
+  DEAL_LOST
+}
+
+// ─── Scoring Configuration ────────────────────────────────────────────────────
+
+model ScoringRule {
+  id        String    @id @default(uuid())
+  eventType EventType @unique
+  points    Int
+  isActive  Boolean   @default(true)
+  updatedAt DateTime  @updatedAt
+}
+
+model LevelConfig {
+  level     Int      @id
+  minXP     Int
+  label     String
+  updatedAt DateTime @updatedAt
+}
+
+model DailyCapConfig {
+  id        String    @id @default(uuid())
+  eventType EventType @unique
+  maxCount  Int
+  isActive  Boolean   @default(true)
+  updatedAt DateTime  @updatedAt
+}
+
+// ─── Gamification State ───────────────────────────────────────────────────────
+
+model UserStats {
+  userId           String    @id
+  totalXP          Int       @default(0)
+  totalPoints      Int       @default(0)
+  level            Int       @default(1)
+  currentStreak    Int       @default(0)
+  longestStreak    Int       @default(0)
+  lastActivityDate DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model WeeklyStat {
+  id         String   @id @default(uuid())
+  userId     String
+  isoWeek    String
+  weekPoints Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, isoWeek])
+  @@index([isoWeek, weekPoints])
+}
+
+model DailyCap {
+  id        String    @id @default(uuid())
+  userId    String
+  eventType EventType
+  date      DateTime  @db.Date
+  count     Int       @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, eventType, date])
+}
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
+
+model BadgeAward {
+  id        String    @id @default(uuid())
+  userId    String
+  badgeType BadgeType
+  awardedAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, badgeType])
+}
+
+model BadgeProgress {
+  id           String    @id @default(uuid())
+  userId       String
+  badgeType    BadgeType
+  currentCount Int       @default(0)
+  targetCount  Int
+  weekKey      String?
+  isCompleted  Boolean   @default(false)
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, badgeType, weekKey])
+}
+
+enum BadgeType {
+  FIRST_WIN
+  CONSISTENT_CLOSER
+  PIPELINE_BUILDER
+  HOT_STREAK
+  TOP_OF_THE_WEEK
+  COMEBACK_KID
+}
+
+// ─── Award Timeline ───────────────────────────────────────────────────────────
+
+model AwardTimeline {
+  id             String            @id @default(uuid())
+  userId         String
+  type           TimelineEventType
+  badgeType      BadgeType?
+  eventId        String?
+  pointsSnapshot Int
+  xpSnapshot     Int
+  levelSnapshot  Int
+  weekKey        String?
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+enum TimelineEventType {
+  BADGE_EARNED
+  LEVEL_UP
+  STREAK_MILESTONE
+  WEEKLY_TOP_3
+  PERSONAL_BEST_WEEK
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model NotificationLog {
+  id       String   @id @default(uuid())
+  userId   String
+  type     String
+  channel  String   @default("email")
+  sentAt   DateTime @default(now())
+  metadata Json?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, type, sentAt])
+}

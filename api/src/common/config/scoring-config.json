@@ -1,0 +1,21 @@
+{
+  "pointRules": {
+    "LEAD_CONTACTED": 10,
+    "MEETING_COMPLETED": 20,
+    "STAGE_ADVANCED": 30,
+    "DEAL_WON": 100,
+    "DEAL_LOST": -20
+  },
+  "dailyCaps": {
+    "LEAD_CONTACTED": {
+      "maxCount": 5,
+      "isActive": true
+    }
+  },
+  "levels": [
+    { "level": 1, "minXP": 0,   "label": "Rookie" },
+    { "level": 2, "minXP": 100, "label": "Closer" },
+    { "level": 3, "minXP": 250, "label": "Elite"  },
+    { "level": 4, "minXP": 500, "label": "Legend" }
+  ]
+}
