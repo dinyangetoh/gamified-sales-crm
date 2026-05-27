@@ -13,10 +13,14 @@ export default function Button({
   const ghost = variant === 'ghost'
   const sm = size === 'sm'
 
+  const variantStyle: CSSProperties = ghost
+    ? { background: 'transparent', color: 'var(--ink)', borderColor: 'var(--border-strong)' }
+    : { background: 'var(--accent)', color: '#f2f2f2', borderColor: 'var(--accent)' }
+
   return (
     <button
       className={`btn ${ghost ? 'ghost' : ''} ${sm ? 'sm' : ''} ${className}`.trim()}
-      style={style}
+      style={{ ...variantStyle, ...style }}
       {...props}
     />
   )

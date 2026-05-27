@@ -3,34 +3,21 @@
 import { useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import Button from '@/components/ui/Button'
-
-const eventTypes = [
-  { value: 'LEAD_CONTACTED', label: 'Lead contacted' },
-  { value: 'MEETING_COMPLETED', label: 'Meeting completed' },
-  { value: 'STAGE_ADVANCED', label: 'Stage advanced' },
-  { value: 'DEAL_WON', label: 'Deal won' },
-  { value: 'DEAL_LOST', label: 'Deal lost' },
-] as const
-
-type EventResult = {
-  eventId: string
-  accepted: boolean
-  duplicate: boolean
-  capReached: boolean
-  pointsAwarded: number
-  reason?: string
-  user?: { totalXP: number; totalPoints: number; level: number; levelLabel: string; currentStreak: number; longestStreak: number }
-  badgesUnlocked: Array<{ type: string; displayName: string; iconUrl: string }>
-}
+import {
+  SIMULATOR_EVENT_TYPES,
+  type ProcessEventResult,
+  type SimulatorEventType,
+  newEventId,
+} from '@/lib/events/eventSimulatorTypes'
 
 export default function EventSimulator({
   userId,
   onSent,
 }: {
   userId: string
-  onSent?: (result: EventResult) => void
+  onSent?: (result: ProcessEventResult) => void
 }) {
-  const [eventType, setEventType] = useState<(typeof eventTypes)[number]['value']>('LEAD_CONTACTED')
+  const [eventType, setEventType] = useState<SimulatorEventType>('LEAD_CONTACTED')
   const [entityId, setEntityId] = useState('deal-123')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -41,8 +28,8 @@ export default function EventSimulator({
     setLoading(true)
     setMessage(null)
     try {
-      const eventId = crypto.randomUUID()
-      const res = await apiFetch<EventResult>('/events', {
+      const eventId = newEventId()
+      const res = await apiFetch<ProcessEventResult>('/events', {
         method: 'POST',
         body: {
           eventId,
@@ -73,38 +60,17 @@ export default function EventSimulator({
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
       <select
         value={eventType}
-        onChange={(e) => setEventType(e.target.value as (typeof eventTypes)[number]['value'])}
-        style={{
-          height: 34,
-          borderRadius: 10,
-          border: '1px solid var(--border-strong)',
-          background: 'var(--surface)',
-          padding: '0 10px',
-          fontSize: 13,
-          color: 'var(--ink)',
-        }}
+        onChange={(e) => setEventType(e.target.value as SimulatorEventType)}
+        style={inputStyle}
       >
-        {eventTypes.map((t) => (
+        {SIMULATOR_EVENT_TYPES.map((t) => (
           <option key={t.value} value={t.value}>
             {t.label}
           </option>
         ))}
       </select>
 
-      <input
-        value={entityId}
-        onChange={(e) => setEntityId(e.target.value)}
-        style={{
-          height: 34,
-          borderRadius: 10,
-          border: '1px solid var(--border-strong)',
-          background: 'var(--surface)',
-          padding: '0 10px',
-          fontSize: 13,
-          color: 'var(--ink)',
-          width: 160,
-        }}
-      />
+      <input value={entityId} onChange={(e) => setEntityId(e.target.value)} style={{ ...inputStyle, width: 160 }} />
 
       <Button onClick={submit} disabled={loading} style={{ height: 34, justifyContent: 'center' }}>
         {loading ? 'Processing…' : 'Simulate event'}
@@ -115,3 +81,12 @@ export default function EventSimulator({
   )
 }
 
+const inputStyle: React.CSSProperties = {
+  height: 34,
+  borderRadius: 10,
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface)',
+  padding: '0 10px',
+  fontSize: 13,
+  color: 'var(--ink)',
+}

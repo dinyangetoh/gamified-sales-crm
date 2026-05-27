@@ -108,7 +108,15 @@ export default function LoginPage() {
               type="submit"
               className="btn"
               disabled={loading}
-              style={{ height: 38, marginTop: 4, justifyContent: 'center', borderRadius: 8, fontSize: 13, opacity: loading ? 0.7 : 1 }}
+              style={{
+                height: 38,
+                marginTop: 4,
+                justifyContent: 'center',
+                borderRadius: 8,
+                fontSize: 13,
+                opacity: loading ? 0.7 : 1,
+                color: '#f2f2f2',
+              }}
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>

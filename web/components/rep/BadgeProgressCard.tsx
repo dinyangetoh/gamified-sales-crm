@@ -50,7 +50,16 @@ export default function BadgeProgressCard({
         <button
           type="button"
           className="btn"
-          style={{ width: '100%', marginTop: 12, justifyContent: 'center', height: 34, display: 'inline-flex', alignItems: 'center', gap: 8 }}
+          style={{
+            width: '100%',
+            marginTop: 12,
+            justifyContent: 'center',
+            height: 34,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            color: '#f2f2f2',
+          }}
         >
           {Icon.bolt}
           <span>Log a stage advance</span>

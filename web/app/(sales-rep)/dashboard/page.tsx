@@ -124,10 +124,16 @@ export default function DashboardPage() {
       title={profile ? `Good afternoon, ${profile.name.split(' ')[0]}` : 'Dashboard'}
       sub="Week · Acme Sales"
       actions={
-        <button type="button" className="btn sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          {Icon.bolt}
-          <span>Log event</span>
-        </button>
+        <>
+          <a href="/activity" className="btn ghost sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+            {Icon.list}
+            <span>Activity</span>
+          </a>
+          <button type="button" className="btn sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#f2f2f2' }}>
+            {Icon.bolt}
+            <span>Log event</span>
+          </button>
+        </>
       }
     >
       {loading && <Card title="Loading…" subtitle="Fetching your stats"> </Card>}

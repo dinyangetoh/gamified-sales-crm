@@ -30,6 +30,27 @@ body button {
   font-size: inherit;
 }
 
+/* Solid .btn: light label on dark CTA (beats color:inherit from resets) */
+button.btn:not(.ghost),
+.btn:not(.ghost) {
+  color: #f2f2f2;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+button.btn:not(.ghost) span,
+button.btn:not(.ghost) svg,
+.btn:not(.ghost) span,
+.btn:not(.ghost) svg {
+  color: currentColor;
+}
+
+button.btn.ghost,
+.btn.ghost {
+  color: var(--ink);
+  background: transparent;
+}
+
 .num {
   font-family: var(--font-mono);
   font-feature-settings: "tnum";

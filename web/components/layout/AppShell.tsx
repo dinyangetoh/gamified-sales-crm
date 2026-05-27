@@ -22,6 +22,7 @@ const managerNav = [
   { id: 'dashboard', label: 'Overview', href: '/manager/dashboard', icon: Icon.dashboard },
   { id: 'leaderboard', label: 'Leaderboard', href: '/manager/leaderboard', icon: Icon.trophy },
   { id: 'reps', label: 'Reps', href: '/manager/reps', icon: Icon.people },
+  { id: 'simulator', label: 'Simulator', href: '/manager/simulator', icon: Icon.bolt },
   { id: 'rules', label: 'Rules', href: '/manager/rules', icon: Icon.rules },
   { id: 'emails', label: 'Email Templates', href: '/manager/emails', icon: Icon.mail },
 ]
