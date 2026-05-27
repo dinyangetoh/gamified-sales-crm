@@ -5,14 +5,14 @@ export default function Card({
   subtitle,
   action,
   padded = true,
-  children,
+  children = null,
   style,
 }: {
   title?: string
   subtitle?: string
   action?: ReactNode
   padded?: boolean
-  children: ReactNode
+  children?: ReactNode
   style?: CSSProperties
 }) {
   return (
@@ -29,7 +29,7 @@ export default function Card({
         >
           <div style={{ minWidth: 0 }}>
             {title && (
-              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: '-0.005em' }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, letterSpacing: '-0.005em' }}>
                 {title}
               </h3>
             )}

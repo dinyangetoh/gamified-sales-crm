@@ -3,15 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import AppShell from '@/components/layout/AppShell'
 import Card from '@/components/ui/Card'
-import BadgeIcon from '@/components/ui/BadgeIcon'
+import SegmentedControl from '@/components/ui/SegmentedControl'
+import Podium, { type PodiumEntry } from '@/components/leaderboard/Podium'
+import LeaderboardTable from '@/components/leaderboard/LeaderboardTable'
 import useSession from '@/lib/auth/useSession'
 import { apiFetch } from '@/lib/api/client'
-import Button from '@/components/ui/Button'
 
 type LeaderboardResponse = {
   week?: string
-  generatedAt: string | Date
-  fromCache: boolean
   entries: Array<{
     rank: number
     userId: string
@@ -21,14 +20,15 @@ type LeaderboardResponse = {
     level: number
     levelLabel: string
     currentStreak: number
-    pointsGap: number
-    badges: Array<{ type: string; displayName: string; iconUrl: string }>
+    rankDelta?: number
+    lastWeekRank?: number
+    badges: Array<{ type: string }>
   }>
 }
 
 export default function ManagerLeaderboardPage() {
   const { session } = useSession()
-  const actorId = session?.sub
+  const userId = session?.sub
 
   const [mode, setMode] = useState<'weekly' | 'all-time'>('weekly')
   const [data, setData] = useState<LeaderboardResponse | null>(null)
@@ -55,121 +55,55 @@ export default function ManagerLeaderboardPage() {
     }
   }, [endpoint])
 
-  const top3 = data?.entries.slice(0, 3) ?? []
-  const actorRow = data?.entries.find((e) => e.userId === actorId) ?? null
+  const entries: PodiumEntry[] = useMemo(
+    () =>
+      (data?.entries ?? []).map((e) => ({
+        userId: e.userId,
+        name: e.name,
+        rank: e.rank,
+        weekPoints: e.weekPoints ?? e.totalXP ?? 0,
+        level: e.level,
+        levelLabel: e.levelLabel,
+        currentStreak: e.currentStreak,
+        rankDelta: e.rankDelta,
+        lastWeekRank: e.lastWeekRank,
+        badges: e.badges,
+      })),
+    [data],
+  )
 
   return (
-    <AppShell role="manager" active="leaderboard" title="Leaderboard" sub="Team ranking">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Button variant={mode === 'weekly' ? 'solid' : 'ghost'} size="sm" onClick={() => setMode('weekly')}>
-            Weekly
-          </Button>
-          <Button variant={mode === 'all-time' ? 'solid' : 'ghost'} size="sm" onClick={() => setMode('all-time')}>
-            All-time
-          </Button>
-        </div>
-
-        {actorRow && (
-          <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)', fontSize: 12 }}>
-            You are at <span style={{ color: 'var(--ink)', fontWeight: 900 }}>#{actorRow.rank}</span>
-          </div>
-        )}
-      </div>
-
-      {err && (
-        <Card title="Could not load" subtitle={err}>
-          Please try reloading the page.
-        </Card>
-      )}
-
+    <AppShell
+      role="manager"
+      active="leaderboard"
+      title="Leaderboard"
+      sub="Team rankings across the week · Acme Sales"
+      actions={
+        <SegmentedControl
+          options={[
+            { value: 'weekly' as const, label: 'This week' },
+            { value: 'all-time' as const, label: 'All time' },
+          ]}
+          value={mode}
+          onChange={setMode}
+        />
+      }
+    >
+      {err && <Card title="Could not load" subtitle={err} />}
       {!err && !data && <Card title="Loading…" subtitle="Fetching leaderboard"> </Card>}
 
-      {data && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Card title={mode === 'weekly' ? `Top performers — ${data.week ?? ''}` : 'Top performers — All-time'} subtitle="Top 3 reps">
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {top3.length === 0 ? (
-                <div style={{ color: 'var(--muted)' }}>No leaderboard data yet.</div>
-              ) : (
-                top3.map((e, idx) => (
-                  <div
-                    key={e.userId}
-                    style={{
-                      flex: '1 1 220px',
-                      minWidth: 220,
-                      padding: '12px 12px',
-                      borderRadius: 14,
-                      border: '1px solid var(--border)',
-                      background: idx === 0 ? 'var(--surface-2)' : 'var(--surface)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 900, color: 'var(--muted)' }}>
-                        #{e.rank}
-                      </div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 900 }}>
-                        {e.levelLabel}
-                      </div>
-                    </div>
-                    <div style={{ marginTop: 6, fontWeight: 900 }}>{e.name}</div>
-                    <div style={{ marginTop: 4, color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                      Streak {e.currentStreak} · Gap {e.pointsGap}
-                    </div>
-                    <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      {e.badges.slice(0, 3).map((b) => (
-                        <BadgeIcon key={b.type} type={b.type} size={30} />
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
+      {data && mode === 'weekly' && entries.length >= 3 && (
+        <>
+          <Podium entries={entries} currentUserId={userId} />
+          <LeaderboardTable entries={entries} currentUserId={userId} />
+        </>
+      )}
 
-          <Card title={mode === 'weekly' ? `Weekly leaderboard — ${data.week ?? ''}` : 'All-time leaderboard'} subtitle="Full ranking table">
-            <div style={{ overflow: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                <thead>
-                  <tr style={{ textAlign: 'left' }}>
-                    {['Rank', 'Rep', 'Level', 'Gap', 'Badges'].map((h) => (
-                      <th key={h} style={{ padding: '10px 12px', fontSize: 12, color: 'var(--muted)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.entries.map((e) => {
-                    const isActor = e.userId === actorId
-                    return (
-                      <tr key={e.userId} style={{ background: isActor ? 'var(--bg-sub)' : undefined }}>
-                        <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 800 }}>{e.rank}</td>
-                        <td style={{ padding: '10px 12px', minWidth: 180 }}>
-                          <div style={{ fontWeight: 800 }}>{e.name}</div>
-                        </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 900 }}>{e.levelLabel}</div>
-                        </td>
-                        <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13 }}>{e.pointsGap}</td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                            {e.badges.slice(0, 3).map((b) => (
-                              <BadgeIcon key={b.type} type={b.type} size={28} />
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
+      {data && (mode === 'all-time' || entries.length < 3) && (
+        <Card title={mode === 'weekly' ? `Week ${data.week ?? ''}` : 'All-time'} subtitle="Full rankings">
+          <LeaderboardTable entries={entries} currentUserId={userId} showWeekPoints={mode === 'weekly'} includePodium />
+        </Card>
       )}
     </AppShell>
   )
 }
-
-
