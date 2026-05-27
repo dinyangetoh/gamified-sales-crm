@@ -2044,17 +2044,18 @@ becomes a write hotspot. Redis locks when scoring workers scale horizontally.
 
 ---
 
-### D3 — DB-Driven Scoring Rules, View-Only in POC
+### D3 — Scoring Config Repository (JSON at runtime, DB-ready)
 
-**Decision:** `ScoringRule`, `LevelConfig`, `DailyCapConfig` seeded from JSON into DB.
-Manager can view rules. Edit endpoint is MVP scope.
+**Decision:** `IScoringConfigRepository` with `JsonScoringConfigRepository` (POC) reading
+[`scoring-config.json`](../api/src/common/config/scoring-config.json). `ScoringConfigService`
+adds Redis caching and invalidation. `DbScoringConfigRepository` maps existing Prisma tables
+for a one-line Nest swap when manager rule edits ship. DB tables are seeded from JSON for
+demo parity, not used at runtime in POC.
 
-**Alternative:** Hardcode point values or keep in JSON file at runtime.
+**Alternative:** DB-only at runtime from day one.
 
-**Tradeoff:** The DB-driven design enables the manager rules panel to show current
-config (useful for the demo) and to evolve into an editable UI without a schema
-change. The JSON file is the seed source and the migration fallback — not the
-runtime source. Edit endpoint removed from POC scope to stay intentional.
+**Tradeoff:** Spec-exact defaults without a deploy; clear migration path to editable rules
+via `PATCH /manager/rules` + `DbScoringConfigRepository` + `ScoringConfigService.invalidate()`.
 
 ---
 

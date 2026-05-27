@@ -10,12 +10,12 @@ import { CacheKey } from '../../common/cache/CacheKey'
 import { deriveLevel, deriveLevelLabel } from './levelUtils'
 import { computeStreakUpdate } from './streakUtils'
 import { getIsoWeek } from './isoWeekUtils'
-import { STREAK_MILESTONES, CACHE_TTL_SCORING_CONFIG } from './constants'
+import { STREAK_MILESTONES } from './constants'
 import { QueueName } from '../../common/queues/QueueName'
 import { NotificationJobName } from '../../common/queues/JobName'
-import { ScoringConfig } from '../../common/config/scoringConfig.schema'
 import { BadgeType } from '@db'
 import { ScoringRepository } from './ScoringRepository'
+import { ScoringConfigService } from './ScoringConfigService'
 
 export interface CreateEventInput {
   eventId: string
@@ -51,6 +51,7 @@ export class ScoringService {
 
   constructor(
     private readonly scoringRepo: ScoringRepository,
+    private readonly scoringConfigService: ScoringConfigService,
     private readonly badgesService: BadgesService,
     private readonly usersService: UsersService,
     private readonly dedup: DeduplicationService,
@@ -76,7 +77,7 @@ export class ScoringService {
       }
     }
 
-    const rules = await this.getScoringConfig()
+    const rules = await this.scoringConfigService.getConfig()
     const basePoints = rules.pointRules[input.eventType] ?? 0
 
     const today = new Date(timestamp)
@@ -102,7 +103,7 @@ export class ScoringService {
     const currentPoints = currentStats?.totalPoints ?? 0
 
     const newXP = Math.max(0, currentXP + pointsAwarded)
-    const newPoints = currentPoints + pointsAwarded
+    const newPoints = newXP
     const newLevel = deriveLevel(newXP, rules.levels)
     const newLevelLabel = deriveLevelLabel(newXP, rules.levels)
     const levelUp = newLevel > (currentStats?.level ?? 1)
@@ -258,32 +259,10 @@ export class ScoringService {
       badgesUnlocked,
     }
 
-    if (capReached) {
-      result.reason = `Daily cap reached for ${input.eventType}`
+    if (capReached && capConfig) {
+      result.reason = `Daily cap reached for ${input.eventType} (${capConfig.maxCount}/${capConfig.maxCount})`
     }
 
     return result
-  }
-
-  private async getScoringConfig(): Promise<ScoringConfig> {
-    const cached = await this.cache.get<ScoringConfig>(CacheKey.scoringConfig())
-    if (cached) return cached
-
-    const [scoringRules, levelConfigs, capConfigs] = await Promise.all([
-      this.scoringRepo.findScoringRules(),
-      this.scoringRepo.findLevelConfigs(),
-      this.scoringRepo.findDailyCapConfigs(),
-    ])
-
-    const config: ScoringConfig = {
-      pointRules: Object.fromEntries(scoringRules.map((r) => [r.eventType, r.points])),
-      dailyCaps: Object.fromEntries(
-        capConfigs.map((c) => [c.eventType, { maxCount: c.maxCount, isActive: c.isActive }]),
-      ),
-      levels: levelConfigs.map((l) => ({ level: l.level, minXP: l.minXP, label: l.label })),
-    }
-
-    await this.cache.set(CacheKey.scoringConfig(), config, CACHE_TTL_SCORING_CONFIG)
-    return config
   }
 }

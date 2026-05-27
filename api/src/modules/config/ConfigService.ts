@@ -1,18 +1,17 @@
 import { Injectable } from '@nestjs/common'
-import { ScoringRepository } from '../scoring/ScoringRepository'
+import { ScoringConfigService } from '../scoring/ScoringConfigService'
 import { LevelConfigDto } from './dto/LevelConfigDto'
 
 @Injectable()
 export class ConfigService {
-  constructor(private readonly scoringRepo: ScoringRepository) {}
+  constructor(private readonly scoringConfigService: ScoringConfigService) {}
 
   async getLevelConfigs(): Promise<LevelConfigDto[]> {
-    const configs = await this.scoringRepo.findLevelConfigs()
-    return configs.map((c: any) => ({
+    const { levels } = await this.scoringConfigService.getConfig()
+    return levels.map((c) => ({
       level: c.level,
       minXP: c.minXP,
       label: c.label,
     }))
   }
 }
-

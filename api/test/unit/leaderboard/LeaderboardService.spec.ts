@@ -2,17 +2,17 @@ import { mock, MockProxy } from 'jest-mock-extended'
 import { Test } from '@nestjs/testing'
 import { LeaderboardService } from '../../../src/modules/leaderboard/LeaderboardService'
 import { LeaderboardRepository } from '../../../src/modules/leaderboard/LeaderboardRepository'
-import { ScoringRepository } from '../../../src/modules/scoring/ScoringRepository'
+import { ScoringConfigService } from '../../../src/modules/scoring/ScoringConfigService'
 import { ICacheAdapter, CACHE_ADAPTER } from '../../../src/common/cache/ICacheAdapter'
 
 type WeeklyResult = { week: string; entries: { weekPoints: number; rank: number; pointsGap: number; userId: string }[]; fromCache: boolean }
 type AllTimeResult = { entries: { totalXP: number; rank: number; pointsGap: number }[]; fromCache: boolean }
 
 const LEVELS = [
-  { level: 1, minXP: 0, label: 'Rookie', updatedAt: new Date() },
-  { level: 2, minXP: 100, label: 'Closer', updatedAt: new Date() },
-  { level: 3, minXP: 250, label: 'Elite', updatedAt: new Date() },
-  { level: 4, minXP: 500, label: 'Legend', updatedAt: new Date() },
+  { level: 1, minXP: 0, label: 'Rookie' },
+  { level: 2, minXP: 100, label: 'Closer' },
+  { level: 3, minXP: 250, label: 'Elite' },
+  { level: 4, minXP: 500, label: 'Legend' },
 ]
 
 function makeWeeklyStat(userId: string, weekPoints: number, totalXP = 0) {
@@ -40,22 +40,26 @@ function makeWeeklyStat(userId: string, weekPoints: number, totalXP = 0) {
 describe('LeaderboardService', () => {
   let service: LeaderboardService
   let leaderboardRepo: MockProxy<LeaderboardRepository>
-  let scoringRepo: MockProxy<ScoringRepository>
+  let scoringConfigService: MockProxy<ScoringConfigService>
   let cache: MockProxy<ICacheAdapter>
 
   beforeEach(async () => {
     leaderboardRepo = mock<LeaderboardRepository>()
-    scoringRepo = mock<ScoringRepository>()
+    scoringConfigService = mock<ScoringConfigService>()
     cache = mock<ICacheAdapter>()
     cache.get.mockResolvedValue(null)
     cache.set.mockResolvedValue(undefined)
-    scoringRepo.findLevelConfigs.mockResolvedValue(LEVELS as never)
+    scoringConfigService.getConfig.mockResolvedValue({
+      pointRules: {},
+      dailyCaps: {},
+      levels: LEVELS,
+    } as never)
 
     const module = await Test.createTestingModule({
       providers: [
         LeaderboardService,
         { provide: LeaderboardRepository, useValue: leaderboardRepo },
-        { provide: ScoringRepository, useValue: scoringRepo },
+        { provide: ScoringConfigService, useValue: scoringConfigService },
         { provide: CACHE_ADAPTER, useValue: cache },
       ],
     }).compile()

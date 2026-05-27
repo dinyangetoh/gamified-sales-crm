@@ -1,0 +1,67 @@
+{
+  "passwordHint": "Demo1234!",
+  "users": [
+    {
+      "id": "00000001-0001-4001-8001-000000000001",
+      "email": "manager@demo.com",
+      "name": "Manager Demo",
+      "role": "MANAGER"
+    },
+    {
+      "id": "00000002-0001-4001-8001-000000000002",
+      "email": "alice@demo.com",
+      "name": "Alice Smith",
+      "role": "SALES_REP",
+      "crmExternalId": "user-alice"
+    },
+    {
+      "id": "00000003-0001-4001-8001-000000000003",
+      "email": "bob@demo.com",
+      "name": "Bob Chen",
+      "role": "SALES_REP",
+      "crmExternalId": "user-bob"
+    },
+    {
+      "id": "00000004-0001-4001-8001-000000000004",
+      "email": "charlie@demo.com",
+      "name": "Charlie Davis",
+      "role": "SALES_REP",
+      "crmExternalId": "user-charlie"
+    },
+    {
+      "id": "00000005-0001-4001-8001-000000000005",
+      "email": "diana@demo.com",
+      "name": "Diana Osei",
+      "role": "SALES_REP",
+      "crmExternalId": "user-diana"
+    },
+    {
+      "id": "00000006-0001-4001-8001-000000000006",
+      "email": "evan@demo.com",
+      "name": "Evan Park",
+      "role": "SALES_REP",
+      "crmExternalId": "user-evan"
+    },
+    {
+      "id": "00000007-0001-4001-8001-000000000007",
+      "email": "fiona@demo.com",
+      "name": "Fiona Walsh",
+      "role": "SALES_REP",
+      "crmExternalId": "user-fiona"
+    },
+    {
+      "id": "00000008-0001-4001-8001-000000000008",
+      "email": "george@demo.com",
+      "name": "George Torres",
+      "role": "SALES_REP",
+      "crmExternalId": "user-george"
+    },
+    {
+      "id": "00000009-0001-4001-8001-000000000009",
+      "email": "hannah@demo.com",
+      "name": "Hannah Lee",
+      "role": "SALES_REP",
+      "crmExternalId": "user-hannah"
+    }
+  ]
+}

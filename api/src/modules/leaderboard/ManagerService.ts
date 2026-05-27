@@ -1,36 +1,34 @@
 import { Injectable } from '@nestjs/common'
+import { EventType } from '@db'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
-import { ScoringRepository } from '../scoring/ScoringRepository'
+import { ScoringConfigService } from '../scoring/ScoringConfigService'
 import { UsersService } from '../users/UsersService'
 
 @Injectable()
 export class ManagerService {
   constructor(
-    private readonly scoringRepo: ScoringRepository,
+    private readonly scoringConfigService: ScoringConfigService,
     private readonly usersService: UsersService,
   ) {}
 
   async getRules() {
-    const [scoringRules, levelConfigs, capConfigs] = await Promise.all([
-      this.scoringRepo.findAllScoringRules(),
-      this.scoringRepo.findAllLevelConfigs(),
-      this.scoringRepo.findAllDailyCapConfigs(),
-    ])
+    const config = await this.scoringConfigService.getConfig()
+    const updatedAt = new Date()
 
     return {
-      scoringRules: scoringRules.map((r) => ({
-        eventType: r.eventType,
-        points: r.points,
-        isActive: r.isActive,
-        updatedAt: r.updatedAt,
+      scoringRules: (Object.keys(config.pointRules) as EventType[]).map((eventType) => ({
+        eventType,
+        points: config.pointRules[eventType],
+        isActive: true,
+        updatedAt,
       })),
-      dailyCapRules: capConfigs.map((c) => ({
-        eventType: c.eventType,
-        maxCount: c.maxCount,
-        isActive: c.isActive,
-        updatedAt: c.updatedAt,
+      dailyCapRules: (Object.keys(config.dailyCaps) as EventType[]).map((eventType) => ({
+        eventType,
+        maxCount: config.dailyCaps[eventType].maxCount,
+        isActive: config.dailyCaps[eventType].isActive,
+        updatedAt,
       })),
-      levelConfig: levelConfigs.map((l) => ({
+      levelConfig: config.levels.map((l) => ({
         level: l.level,
         minXP: l.minXP,
         label: l.label,

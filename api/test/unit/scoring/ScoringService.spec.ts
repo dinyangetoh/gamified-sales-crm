@@ -4,6 +4,7 @@ import { EventType, BadgeType, Role } from '@prisma/client'
 import { getQueueToken } from '@nestjs/bullmq'
 import { ScoringService, CreateEventInput } from '../../../src/modules/scoring/ScoringService'
 import { ScoringRepository } from '../../../src/modules/scoring/ScoringRepository'
+import { ScoringConfigService } from '../../../src/modules/scoring/ScoringConfigService'
 import { BadgesService } from '../../../src/modules/badges/BadgesService'
 import { UsersService } from '../../../src/modules/users/UsersService'
 import { DeduplicationService } from '../../../src/common/cache/DeduplicationService'
@@ -57,6 +58,7 @@ function makeConfig() {
 describe('ScoringService', () => {
   let service: ScoringService
   let scoringRepo: MockProxy<ScoringRepository>
+  let scoringConfigService: MockProxy<ScoringConfigService>
   let badgesService: MockProxy<BadgesService>
   let usersService: MockProxy<UsersService>
   let dedup: MockProxy<DeduplicationService>
@@ -73,6 +75,7 @@ describe('ScoringService', () => {
 
   beforeEach(async () => {
     scoringRepo = mock<ScoringRepository>()
+    scoringConfigService = mock<ScoringConfigService>()
     badgesService = mock<BadgesService>()
     usersService = mock<UsersService>()
     dedup = mock<DeduplicationService>()
@@ -93,14 +96,14 @@ describe('ScoringService', () => {
     usersService.getStats.mockResolvedValue(makeStats())
     dedup.isProcessed.mockResolvedValue(false)
     badgesService.evaluate.mockResolvedValue({ unlocked: [] })
-    cache.get.mockResolvedValue(makeConfig())
-    cache.set.mockResolvedValue(undefined)
+    scoringConfigService.getConfig.mockResolvedValue(makeConfig())
     cache.del.mockResolvedValue(undefined)
 
     const module = await Test.createTestingModule({
       providers: [
         ScoringService,
         { provide: ScoringRepository, useValue: scoringRepo },
+        { provide: ScoringConfigService, useValue: scoringConfigService },
         { provide: BadgesService, useValue: badgesService },
         { provide: UsersService, useValue: usersService },
         { provide: DeduplicationService, useValue: dedup },
@@ -151,9 +154,10 @@ describe('ScoringService', () => {
 
     it('XP floor is 0 — never negative even with DEAL_LOST on 0 XP', async () => {
       usersService.getStats.mockResolvedValue(makeStats({ totalXP: 0, totalPoints: 0 }))
-      scoringRepo.upsertUserStats.mockResolvedValue(makeStats({ totalXP: 0, totalPoints: -20 }))
+      scoringRepo.upsertUserStats.mockResolvedValue(makeStats({ totalXP: 0, totalPoints: 0 }))
       const result = await service.processEvent({ ...baseInput, eventType: EventType.DEAL_LOST })
-      expect(result.user?.totalXP).toBeGreaterThanOrEqual(0)
+      expect(result.user?.totalXP).toBe(0)
+      expect(result.user?.totalPoints).toBe(0)
     })
   })
 
@@ -165,6 +169,7 @@ describe('ScoringService', () => {
       const result = await service.processEvent({ ...baseInput, eventType: EventType.LEAD_CONTACTED })
       expect(result.capReached).toBe(true)
       expect(result.pointsAwarded).toBe(0)
+      expect(result.reason).toBe('Daily cap reached for LEAD_CONTACTED (5/5)')
     })
 
     it('does not cap if count is below limit', async () => {

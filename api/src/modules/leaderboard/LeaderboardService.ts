@@ -6,13 +6,13 @@ import { currentIsoWeek, previousIsoWeek } from '../scoring/isoWeekUtils'
 import { deriveLevelLabel } from '../scoring/levelUtils'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
 import { LeaderboardRepository } from './LeaderboardRepository'
-import { ScoringRepository } from '../scoring/ScoringRepository'
+import { ScoringConfigService } from '../scoring/ScoringConfigService'
 
 @Injectable()
 export class LeaderboardService {
   constructor(
     private readonly leaderboardRepo: LeaderboardRepository,
-    private readonly scoringRepo: ScoringRepository,
+    private readonly scoringConfigService: ScoringConfigService,
     @Inject(CACHE_ADAPTER) private readonly cache: ICacheAdapter,
   ) {}
 
@@ -24,10 +24,10 @@ export class LeaderboardService {
     const cached = await this.cache.get(cacheKey)
     if (cached) return { ...(cached as object), fromCache: true }
 
-    const [weekStats, prevWeekStats, levels] = await Promise.all([
+    const [weekStats, prevWeekStats, { levels }] = await Promise.all([
       this.leaderboardRepo.findWeeklyStats(week),
       this.leaderboardRepo.findWeeklyStats(prevWeek),
-      this.scoringRepo.findLevelConfigs(),
+      this.scoringConfigService.getConfig(),
     ])
 
     const prevRankByUserId = new Map(prevWeekStats.map((ws, idx) => [ws.userId, idx + 1]))
@@ -73,9 +73,9 @@ export class LeaderboardService {
     const cached = await this.cache.get(cacheKey)
     if (cached) return { ...(cached as object), fromCache: true }
 
-    const [allStats, levels] = await Promise.all([
+    const [allStats, { levels }] = await Promise.all([
       this.leaderboardRepo.findAllUserStats(),
-      this.scoringRepo.findLevelConfigs(),
+      this.scoringConfigService.getConfig(),
     ])
 
     const entries = allStats.map((s, idx) => {

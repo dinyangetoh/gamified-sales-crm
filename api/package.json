@@ -12,7 +12,10 @@
     "test": "jest --projects jest.unit.config.js",
     "test:e2e": "jest --projects jest.e2e.config.js --runInBand",
     "test:cov": "jest --projects jest.unit.config.js --coverage",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "demo:generate": "ts-node -r dotenv/config scripts/generateDemoEvents.ts",
+    "demo:seed": "ts-node -r dotenv/config -r tsconfig-paths/register scripts/seedDemo.ts",
+    "demo:seed:clean": "ts-node -r dotenv/config -r tsconfig-paths/register scripts/seedDemo.ts --clean"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",

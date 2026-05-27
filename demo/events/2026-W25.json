@@ -1,0 +1,215 @@
+{
+  "isoWeek": "2026-W22",
+  "weekStart": "2026-05-25",
+  "weekEnd": "2026-05-31",
+  "events": [
+    {
+      "eventId": "97dde0bc-114a-4a6f-923a-f620f78c9403",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "george-cap-1-173",
+      "timestamp": "2026-05-26T09:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "eda2d262-8cda-4206-89f6-19ef5f290224",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "george-cap-2-174",
+      "timestamp": "2026-05-26T09:03:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "8c90360c-1730-4ddf-8eb4-105f23bcfbf2",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "george-cap-3-175",
+      "timestamp": "2026-05-26T09:06:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "bfa800ca-734d-4678-9a11-5e547c518dd3",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "george-cap-4-176",
+      "timestamp": "2026-05-26T09:09:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "314de11f-1b04-4607-ba40-9328bce8003b",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "george-cap-5-177",
+      "timestamp": "2026-05-26T09:12:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "9fa54b1d-fb6b-4b8b-a304-0862401ac72e",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "george-cap-6-178",
+      "timestamp": "2026-05-26T09:15:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "2e290f88-1ab9-4fa5-bf3f-6fc915123208",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "george-cap-7-179",
+      "timestamp": "2026-05-26T09:18:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "66e1834a-8c62-44dd-8132-ce65a47a9e13",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "george-cap-8-180",
+      "timestamp": "2026-05-26T09:21:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "d0aaca3a-9152-49b6-bc83-d6c5dac2bbc7",
+      "userId": "00000007-0001-4001-8001-000000000007",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "fiona-w25-1-181",
+      "timestamp": "2026-05-25T08:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "6d4f5bbf-7517-4a6e-9f7f-5d4d0729ca00",
+      "userId": "00000007-0001-4001-8001-000000000007",
+      "eventType": "MEETING_COMPLETED",
+      "entityId": "fiona-w25-2-182",
+      "timestamp": "2026-05-26T09:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "ea567812-8b15-43d6-9fc6-c9ce73e2f52c",
+      "userId": "00000007-0001-4001-8001-000000000007",
+      "eventType": "STAGE_ADVANCED",
+      "entityId": "fiona-w25-3-183",
+      "timestamp": "2026-05-27T10:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "29589302-7608-4f0a-a184-4096bdf523fb",
+      "userId": "00000002-0001-4001-8001-000000000002",
+      "eventType": "MEETING_COMPLETED",
+      "entityId": "alice-w25-1-184",
+      "timestamp": "2026-05-25T08:30:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "1e1b13ed-af94-4f3a-aa64-38af5bdb7ce0",
+      "userId": "00000002-0001-4001-8001-000000000002",
+      "eventType": "STAGE_ADVANCED",
+      "entityId": "alice-w25-2-185",
+      "timestamp": "2026-05-26T09:30:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "41dc19af-0fbf-4ce7-9ea6-703d20cae052",
+      "userId": "00000002-0001-4001-8001-000000000002",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "alice-w25-3-186",
+      "timestamp": "2026-05-27T13:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "bf59f300-b072-4bfe-8971-81045cb3a273",
+      "userId": "00000002-0001-4001-8001-000000000002",
+      "eventType": "DEAL_WON",
+      "entityId": "alice-w25-deal-187",
+      "timestamp": "2026-05-27T15:30:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "3707eeaf-e898-4ffb-bff8-c1507f6e81af",
+      "userId": "00000005-0001-4001-8001-000000000005",
+      "eventType": "STAGE_ADVANCED",
+      "entityId": "diana-w25-1-188",
+      "timestamp": "2026-05-25T10:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "2fb07094-b186-4827-b41d-9451b6521812",
+      "userId": "00000005-0001-4001-8001-000000000005",
+      "eventType": "DEAL_WON",
+      "entityId": "diana-w25-2-189",
+      "timestamp": "2026-05-26T14:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "f1505da1-478a-4cc5-b568-e1bd5295f25b",
+      "userId": "00000005-0001-4001-8001-000000000005",
+      "eventType": "MEETING_COMPLETED",
+      "entityId": "diana-w25-3-190",
+      "timestamp": "2026-05-27T09:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "9e6f7c41-1e97-42e2-a3a4-33663aa11282",
+      "userId": "00000006-0001-4001-8001-000000000006",
+      "eventType": "STAGE_ADVANCED",
+      "entityId": "evan-w25-1-191",
+      "timestamp": "2026-05-25T09:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "8bb23661-4dcc-49e8-b53c-77d32c0418f6",
+      "userId": "00000006-0001-4001-8001-000000000006",
+      "eventType": "MEETING_COMPLETED",
+      "entityId": "evan-w25-2-192",
+      "timestamp": "2026-05-26T10:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "5ea59437-3d7a-4167-b81f-4082571d8d01",
+      "userId": "00000006-0001-4001-8001-000000000006",
+      "eventType": "STAGE_ADVANCED",
+      "entityId": "evan-w25-3-193",
+      "timestamp": "2026-05-27T12:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "332e2edf-2d26-4c8d-87fb-338cb651d103",
+      "userId": "00000006-0001-4001-8001-000000000006",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "evan-w25-4-194",
+      "timestamp": "2026-05-27T14:30:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "7a40f69a-4afc-4da4-885f-8addeadf44b1",
+      "userId": "00000008-0001-4001-8001-000000000008",
+      "eventType": "DEAL_WON",
+      "entityId": "george-win-195",
+      "timestamp": "2026-05-27T16:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "c16c86bf-745f-4873-b5be-fa8868a83e38",
+      "userId": "00000004-0001-4001-8001-000000000004",
+      "eventType": "DEAL_WON",
+      "entityId": "charlie-win-196",
+      "timestamp": "2026-05-26T13:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "7fc5f7b2-98ce-4ada-a609-e366d67f97bb",
+      "userId": "00000003-0001-4001-8001-000000000003",
+      "eventType": "LEAD_CONTACTED",
+      "entityId": "bob-LEAD_CONTACTED-197",
+      "timestamp": "2026-05-25T08:00:00.000Z",
+      "provider": "generic"
+    },
+    {
+      "eventId": "28760266-247d-48e2-80de-960980315c10",
+      "userId": "00000003-0001-4001-8001-000000000003",
+      "eventType": "MEETING_COMPLETED",
+      "entityId": "bob-MEETING_COMPLETED-198",
+      "timestamp": "2026-05-29T13:07:00.000Z",
+      "provider": "generic"
+    }
+  ]
+}
