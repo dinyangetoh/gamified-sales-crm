@@ -280,7 +280,7 @@ flowchart TD
 
 ### Scoring Configuration (default)
 
-Source of truth: [`api/src/common/config/scoring-config.json`](../api/src/common/config/scoring-config.json), loaded at runtime via `JsonScoringConfigRepository` (swap to `DbScoringConfigRepository` when manager rule edits ship).
+Source of truth: [`api/src/common/config/scoring-config.json`](../api/src/common/config/scoring-config.json), loaded at runtime via `JsonScoringConfigRepository`.
 
 | Event Type | Points | Daily Cap |
 |---|---|---|
@@ -289,6 +289,36 @@ Source of truth: [`api/src/common/config/scoring-config.json`](../api/src/common
 | `STAGE_ADVANCED` | +30 | — |
 | `DEAL_WON` | +100 | — |
 | `DEAL_LOST` | −20 | — |
+
+### Scoring Config Repository Pattern
+
+The scoring configuration is abstracted behind `IScoringConfigRepository` to allow a zero-friction swap between the JSON file (POC) and live DB rows (MVP, when manager rule editing ships).
+
+```mermaid
+classDiagram
+    class IScoringConfigRepository {
+        <<interface>>
+        +getConfig() Promise~ScoringConfig~
+    }
+
+    class JsonScoringConfigRepository {
+        -cached: ScoringConfig
+        +getConfig() Promise~ScoringConfig~
+    }
+
+    class DbScoringConfigRepository {
+        -scoringRepo: ScoringRepository
+        +getConfig() Promise~ScoringConfig~
+    }
+
+    IScoringConfigRepository <|.. JsonScoringConfigRepository
+    IScoringConfigRepository <|.. DbScoringConfigRepository
+    DbScoringConfigRepository --> ScoringRepository : reads ScoringRule + LevelConfig + DailyCapConfig
+```
+
+**POC (current):** `JsonScoringConfigRepository` reads `scoring-config.json` once and caches in memory — zero DB round-trips per request.
+
+**MVP swap:** Change the NestJS provider token from `JsonScoringConfigRepository` to `DbScoringConfigRepository`. `ScoringService` and all callers depend on `IScoringConfigRepository`, not the concrete class — the swap is a one-line provider change.
 
 ### Level Thresholds
 
@@ -475,6 +505,7 @@ web/
 │   │   ├── leaderboard/ # Manager leaderboard view
 │   │   ├── reps/        # Rep roster with drill-down
 │   │   ├── rules/       # Scoring config (read-only POC)
+│   │   ├── simulator/   # Live event simulator (see below)
 │   │   └── email-templates/ # Notification preview tool
 │   └── layout.tsx       # Root layout with auth + role routing
 ├── components/          # Shared UI primitives
@@ -496,6 +527,17 @@ flowchart LR
 ```
 
 Server Components handle the initial data fetch (no loading flash). Client components handle interactive elements (streak calendar hover, chart tooltips, leaderboard rank deltas).
+
+### Manager Event Simulator
+
+The manager dashboard includes a built-in **event simulator** — a panel that lets a manager fire any event type for any rep directly from the UI, without needing a live CRM integration. The request is routed through the same `POST /events` endpoint the CRM uses, so every response reflects live engine behaviour.
+
+This serves two purposes:
+
+1. **Demo** — evaluators and new users can explore the scoring system and see real-time scoring responses without a CRM connected
+2. **Rule validation** — when scoring config changes in MVP, the simulator lets a manager immediately verify the effect before it goes live
+
+The simulator panel returns the full engine response inline: `status`, `pointsAwarded`, `currentXP`, `currentLevel`, and whether the event was capped or a duplicate.
 
 ---
 
@@ -564,7 +606,7 @@ flowchart TD
 | Fake webhook from non-CRM source | HMAC-SHA256 signature validation before any processing |
 | Race condition on badge double-award | DB unique constraint `(userId, badgeKey, weekKey)` — second INSERT fails silently |
 | TOCTOU on daily cap check | Cap check and counter increment are inside the same serialisable transaction |
-| Sham deal creation and deletion | `DEAL_LOST` carries −10 pts — net gain from create+delete is +90, not +100 |
+| Sham deal creation and deletion | `DEAL_LOST` carries −20 pts — a rep who creates a sham deal and loses it nets +80 pts, not +100; combined with streak risk this is a meaningful deterrent |
 
 ### Idempotency Guarantee — Dual Layer
 
@@ -594,7 +636,7 @@ Redis handles the hot path (sub-millisecond). Postgres handles the race conditio
 | **Scoring inside transaction** | Async scoring | XP, badges, and streak must be consistent with each other; async scoring creates a consistency window |
 | **ISO week boundary** for weekly badges | Rolling 7-day window | Simpler, predictable, aligns with natural work week; less fair for reps who work weekends |
 | **Leaderboard from Postgres** | Redis Sorted Sets | Correct for POC scale; migration path documented with trigger metric (p99 > 100ms) |
-| **Points adjusted from spec** | Exact spec values | Softened `DEAL_LOST` (−10 vs −20), reduced `MEETING_COMPLETED` (+15 vs +20) — product decision, documented, config-driven |
+| **`JsonScoringConfigRepository` as default** | `DbScoringConfigRepository` | JSON file is zero-dependency for the POC; swapping to the DB-backed implementation requires changing one NestJS provider token — no other code changes |
 
 ---
 
