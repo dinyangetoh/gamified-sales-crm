@@ -3,9 +3,15 @@
 import { useMemo } from 'react'
 import type { EmailTemplateId } from './emailTemplateRegistry'
 import { emailTemplateComponents } from './emailTemplateRegistry'
+import { formatDisplayLabel } from '@/lib/labels/formatDisplayLabel'
+
+function templateLabel(t: TemplateRegistryItem): string {
+  return t.templateDisplayName ?? formatDisplayLabel(t.templateId)
+}
 
 type TemplateRegistryItem = {
   templateId: EmailTemplateId
+  templateDisplayName?: string
   role: 'rep' | 'manager'
   status: 'poc' | 'mvp'
   trigger: string
@@ -108,7 +114,7 @@ export default function EmailPreviewPage({
                     }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: active ? 700 : 500, color: 'var(--ink)' }}>{k}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: active ? 700 : 500, color: 'var(--ink)' }}>{templateLabel(t)}</div>
                     <div
                       style={{
                         fontSize: 10.5,
@@ -173,7 +179,7 @@ export default function EmailPreviewPage({
                     }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: active ? 700 : 500, color: 'var(--ink)' }}>{k}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: active ? 700 : 500, color: 'var(--ink)' }}>{templateLabel(t)}</div>
                     <div
                       style={{
                         fontSize: 10.5,
@@ -212,8 +218,8 @@ export default function EmailPreviewPage({
             <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
               Template
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600, marginTop: 3 }}>{selected?.templateId ?? '—'}</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono)', marginTop: 1 }}>{selected?.templateId ?? ''}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginTop: 3 }}>{selected ? templateLabel(selected) : '—'}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{selected?.trigger ?? ''}</div>
           </div>
 
           <div>

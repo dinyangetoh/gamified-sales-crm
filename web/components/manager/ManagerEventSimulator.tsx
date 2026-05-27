@@ -6,12 +6,12 @@ import Button from '@/components/ui/Button'
 import EventSimulatorResultModal from '@/components/manager/EventSimulatorResultModal'
 import { apiFetch } from '@/lib/api/client'
 import {
-  SIMULATOR_EVENT_TYPES,
   type ProcessEventResult,
   type SimulatorEventType,
   type SimulatorModalState,
   newEventId,
 } from '@/lib/events/eventSimulatorTypes'
+import { useEventTypeOptions } from '@/lib/events/useEventTypeOptions'
 
 type RepOption = { userId: string; name: string; email: string }
 
@@ -36,6 +36,7 @@ const labelStyle: React.CSSProperties = {
 }
 
 export default function ManagerEventSimulator({ reps }: { reps: RepOption[] }) {
+  const eventTypeOptions = useEventTypeOptions()
   const [userId, setUserId] = useState(reps[0]?.userId ?? '')
   const [eventType, setEventType] = useState<SimulatorEventType>('LEAD_CONTACTED')
   const [eventId, setEventId] = useState(() => newEventId())
@@ -107,9 +108,9 @@ export default function ManagerEventSimulator({ reps }: { reps: RepOption[] }) {
               onChange={(e) => setEventType(e.target.value as SimulatorEventType)}
               style={fieldStyle}
             >
-              {SIMULATOR_EVENT_TYPES.map((t) => (
+              {eventTypeOptions.map((t) => (
                 <option key={t.value} value={t.value}>
-                  {t.label}
+                  {t.displayName}
                 </option>
               ))}
             </select>

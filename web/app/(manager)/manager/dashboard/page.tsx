@@ -49,6 +49,7 @@ type WeeklyLeaderboardResponse = {
 
 type EmailTemplateRegistryItem = {
   templateId: string
+  templateDisplayName: string
   role: 'rep' | 'manager'
   status: 'poc' | 'mvp'
   trigger: string

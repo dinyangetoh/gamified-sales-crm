@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { EventType } from '@db'
+import { getEventTypeDisplayName } from '../../common/labels/eventTypeLabels'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
 import { ScoringConfigService } from '../scoring/ScoringConfigService'
 import { UsersService } from '../users/UsersService'
@@ -18,12 +19,14 @@ export class ManagerService {
     return {
       scoringRules: (Object.keys(config.pointRules) as EventType[]).map((eventType) => ({
         eventType,
+        eventTypeDisplayName: getEventTypeDisplayName(eventType),
         points: config.pointRules[eventType],
         isActive: true,
         updatedAt,
       })),
       dailyCapRules: (Object.keys(config.dailyCaps) as EventType[]).map((eventType) => ({
         eventType,
+        eventTypeDisplayName: getEventTypeDisplayName(eventType),
         maxCount: config.dailyCaps[eventType].maxCount,
         isActive: config.dailyCaps[eventType].isActive,
         updatedAt,

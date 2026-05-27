@@ -1,5 +1,7 @@
 import { BadgeType, EventType } from '@db'
 
+export type BadgeRepeatPolicy = 'once' | 'per_iso_week' | 'repeatable_lifetime'
+
 export interface BadgeDefinition {
   type: BadgeType
   displayName: string
@@ -7,6 +9,7 @@ export interface BadgeDefinition {
   iconUrl: string
   targetCount: number
   windowType: 'lifetime' | 'iso_week'
+  repeatPolicy: BadgeRepeatPolicy
   eventTypes: EventType[]
   evaluate: (currentCount: number) => boolean
 }
@@ -19,6 +22,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     iconUrl: '/badges/first-win.svg',
     targetCount: 1,
     windowType: 'lifetime',
+    repeatPolicy: 'once',
     eventTypes: [EventType.DEAL_WON],
     evaluate: (count) => count >= 1,
   },
@@ -29,6 +33,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     iconUrl: '/badges/consistent-closer.svg',
     targetCount: 3,
     windowType: 'iso_week',
+    repeatPolicy: 'per_iso_week',
     eventTypes: [EventType.DEAL_WON],
     evaluate: (count) => count >= 3,
   },
@@ -39,6 +44,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     iconUrl: '/badges/pipeline-builder.svg',
     targetCount: 5,
     windowType: 'iso_week',
+    repeatPolicy: 'per_iso_week',
     eventTypes: [EventType.STAGE_ADVANCED],
     evaluate: (count) => count >= 5,
   },
@@ -49,6 +55,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     iconUrl: '/badges/hot-streak.svg',
     targetCount: 5,
     windowType: 'lifetime',
+    repeatPolicy: 'repeatable_lifetime',
     eventTypes: [],
     evaluate: (count) => count >= 5,
   },
@@ -59,6 +66,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     iconUrl: '/badges/top-of-week.svg',
     targetCount: 1,
     windowType: 'iso_week',
+    repeatPolicy: 'per_iso_week',
     eventTypes: [],
     evaluate: (count) => count >= 1,
   },
@@ -69,7 +77,12 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     iconUrl: '/badges/comeback-kid.svg',
     targetCount: 1,
     windowType: 'iso_week',
+    repeatPolicy: 'per_iso_week',
     eventTypes: [],
     evaluate: (count) => count >= 1,
   },
 ]
+
+export function getBadgeDefinition(type: BadgeType): BadgeDefinition | undefined {
+  return BADGE_DEFINITIONS.find((d) => d.type === type)
+}

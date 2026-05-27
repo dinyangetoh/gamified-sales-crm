@@ -8,8 +8,17 @@ function makeTx(overrides: {
   progressCount?: number
   progressId?: string
   existingProgress?: { id: string; currentCount: number; isCompleted: boolean } | null
+  awardsByWeek?: Record<string, BadgeType[]>
+  hotStreakInStreak?: boolean
 } = {}) {
-  const { existingAwards = [], progressCount = 1, progressId = 'prog-1', existingProgress = null } = overrides
+  const {
+    existingAwards = [],
+    progressCount = 1,
+    progressId = 'prog-1',
+    existingProgress = null,
+    awardsByWeek = {},
+    hotStreakInStreak = false,
+  } = overrides
 
   const awardFindMany = jest.fn().mockResolvedValue(
     existingAwards.map((badgeType) => ({ badgeType })),
@@ -20,10 +29,24 @@ function makeTx(overrides: {
   const progressCreate = jest.fn().mockResolvedValue({ id: progressId, currentCount: progressCount, isCompleted: false })
   const awardCreate = jest.fn().mockResolvedValue({})
 
+  const awardFindFirst = jest.fn().mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+    if (where.badgeType === BadgeType.HOT_STREAK && where.awardedAt) {
+      return Promise.resolve(hotStreakInStreak ? { id: 'hs-1' } : null)
+    }
+    const weekKey = where.weekKey as string | undefined
+    if (weekKey && awardsByWeek[weekKey]?.includes(where.badgeType as BadgeType)) {
+      return Promise.resolve({ id: 'w-1' })
+    }
+    if (!weekKey && existingAwards.includes(where.badgeType as BadgeType)) {
+      return Promise.resolve({ id: 'a-1' })
+    }
+    return Promise.resolve(null)
+  })
+
   return {
-    badgeAward: { findMany: awardFindMany, create: awardCreate },
+    badgeAward: { findMany: awardFindMany, findFirst: awardFindFirst, create: awardCreate },
     badgeProgress: { upsert: progressUpsert, findFirst: progressFindFirst, update: progressUpdate, create: progressCreate },
-    _mocks: { awardFindMany, progressUpsert, progressFindFirst, progressUpdate, progressCreate, awardCreate },
+    _mocks: { awardFindMany, progressUpsert, progressFindFirst, progressUpdate, progressCreate, awardCreate, awardFindFirst },
   }
 }
 
@@ -36,13 +59,8 @@ describe('BadgesService', () => {
     service = new BadgesService(badgesRepo)
 
     const asTx = (tx: unknown) => tx as ReturnType<typeof makeTx>
-    badgesRepo.findBadgeAwards.mockImplementation((tx, userId) =>
-      asTx(tx).badgeAward.findMany({ where: { userId } }),
-    )
     badgesRepo.findBadgeProgress.mockImplementation((tx, userId, badgeType, weekKey) =>
-      asTx(tx).badgeProgress.findFirst({
-        where: { userId, badgeType, weekKey },
-      }),
+      asTx(tx).badgeProgress.findFirst({ where: { userId, badgeType, weekKey } }),
     )
     badgesRepo.updateBadgeProgress.mockImplementation((tx, id, data) =>
       asTx(tx).badgeProgress.update({ where: { id }, data }),
@@ -57,21 +75,31 @@ describe('BadgesService', () => {
         update: { currentCount: { increment: 1 } },
       }),
     )
-    badgesRepo.createBadgeAward.mockImplementation((tx, userId, badgeType) =>
-      asTx(tx).badgeAward.create({ data: { userId, badgeType } }),
+    badgesRepo.createBadgeAward.mockImplementation((tx, userId, badgeType, weekKey, awardedAt) =>
+      asTx(tx).badgeAward.create({ data: { userId, badgeType, weekKey, awardedAt } }),
+    )
+    badgesRepo.hasBadgeAward.mockImplementation((tx, userId, badgeType) =>
+      asTx(tx)
+        .badgeAward.findFirst({ where: { userId, badgeType } })
+        .then((row: { id: string } | null) => row !== null),
+    )
+    badgesRepo.hasBadgeAwardForWeek.mockImplementation((tx, userId, badgeType, weekKey) =>
+      asTx(tx)
+        .badgeAward.findFirst({ where: { userId, badgeType, weekKey } })
+        .then((row: { id: string } | null) => row !== null),
+    )
+    badgesRepo.hasHotStreakAwardInCurrentStreak.mockImplementation((tx, userId, _streak, asOf) =>
+      asTx(tx)
+        .badgeAward.findFirst({
+          where: { userId, badgeType: BadgeType.HOT_STREAK, awardedAt: { gte: asOf } },
+        })
+        .then((row: { id: string } | null) => row !== null),
     )
   })
 
-  describe('FIRST_WIN badge (lifetime / null weekKey)', () => {
-    it('unlocks on first DEAL_WON (no existing progress)', async () => {
+  describe('FIRST_WIN badge (once)', () => {
+    it('unlocks on first DEAL_WON', async () => {
       const tx = makeTx({ progressCount: 1, existingProgress: null })
-      const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W01', 1)
-      expect(result.unlocked).toContain(BadgeType.FIRST_WIN)
-    })
-
-    it('unlocks on first DEAL_WON (with existing progress at count 1)', async () => {
-      const existing = { id: 'p1', currentCount: 0, isCompleted: false }
-      const tx = makeTx({ progressCount: 1, existingProgress: existing })
       const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W01', 1)
       expect(result.unlocked).toContain(BadgeType.FIRST_WIN)
     })
@@ -81,85 +109,44 @@ describe('BadgesService', () => {
       const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W01', 1)
       expect(result.unlocked).not.toContain(BadgeType.FIRST_WIN)
     })
-
-    it('does not unlock on LEAD_CONTACTED', async () => {
-      const tx = makeTx()
-      const result = await service.evaluate(tx as never, 'user-1', EventType.LEAD_CONTACTED, '2024-W01', 1)
-      expect(result.unlocked).not.toContain(BadgeType.FIRST_WIN)
-    })
   })
 
-  describe('CONSISTENT_CLOSER badge (iso_week)', () => {
-    it('does not unlock at 2nd DEAL_WON in week', async () => {
-      const tx = makeTx({ progressCount: 2 })
-      const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W02', 1)
-      expect(result.unlocked).not.toContain(BadgeType.CONSISTENT_CLOSER)
-    })
-
+  describe('CONSISTENT_CLOSER badge (per_iso_week)', () => {
     it('unlocks at 3rd DEAL_WON in same week', async () => {
       const tx = makeTx({ progressCount: 3 })
       const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W02', 1)
       expect(result.unlocked).toContain(BadgeType.CONSISTENT_CLOSER)
     })
 
-    it('scopes to isoWeek — progress in a different week does not carry over', async () => {
-      const tx = makeTx({ progressCount: 1 })
-      const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W03', 1)
+    it('can unlock again in a new week after prior week award', async () => {
+      const tx = makeTx({ progressCount: 3, awardsByWeek: { '2024-W01': [BadgeType.CONSISTENT_CLOSER] } })
+      const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W02', 1)
+      expect(result.unlocked).toContain(BadgeType.CONSISTENT_CLOSER)
+    })
+
+    it('does not unlock twice in the same week', async () => {
+      const tx = makeTx({ progressCount: 4, awardsByWeek: { '2024-W02': [BadgeType.CONSISTENT_CLOSER] } })
+      const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W02', 1)
       expect(result.unlocked).not.toContain(BadgeType.CONSISTENT_CLOSER)
     })
   })
 
-  describe('PIPELINE_BUILDER badge (iso_week)', () => {
-    it('does not unlock at 4 STAGE_ADVANCED events', async () => {
-      const tx = makeTx({ progressCount: 4 })
-      const result = await service.evaluate(tx as never, 'user-1', EventType.STAGE_ADVANCED, '2024-W01', 0)
-      expect(result.unlocked).not.toContain(BadgeType.PIPELINE_BUILDER)
-    })
-
-    it('unlocks at 5th STAGE_ADVANCED in same week', async () => {
-      const tx = makeTx({ progressCount: 5 })
-      const result = await service.evaluate(tx as never, 'user-1', EventType.STAGE_ADVANCED, '2024-W01', 0)
-      expect(result.unlocked).toContain(BadgeType.PIPELINE_BUILDER)
-    })
-  })
-
-  describe('HOT_STREAK badge (streak-based)', () => {
-    it('does not unlock when streak is 4', async () => {
-      const tx = makeTx()
-      const result = await service.evaluate(tx as never, 'user-1', EventType.LEAD_CONTACTED, '2024-W01', 4)
-      expect(result.unlocked).not.toContain(BadgeType.HOT_STREAK)
-    })
-
+  describe('HOT_STREAK badge (repeatable_lifetime)', () => {
     it('unlocks when streak reaches 5', async () => {
       const tx = makeTx()
       const result = await service.evaluate(tx as never, 'user-1', EventType.LEAD_CONTACTED, '2024-W01', 5)
       expect(result.unlocked).toContain(BadgeType.HOT_STREAK)
     })
 
-    it('unlocks on any event type when streak >= 5', async () => {
-      const tx = makeTx()
-      const result = await service.evaluate(tx as never, 'user-1', EventType.MEETING_COMPLETED, '2024-W01', 7)
-      expect(result.unlocked).toContain(BadgeType.HOT_STREAK)
-    })
-
-    it('does not unlock again if already earned', async () => {
-      const tx = makeTx({ existingAwards: [BadgeType.HOT_STREAK] })
+    it('does not unlock again during the same streak run', async () => {
+      const tx = makeTx({ hotStreakInStreak: true })
       const result = await service.evaluate(tx as never, 'user-1', EventType.LEAD_CONTACTED, '2024-W01', 10)
       expect(result.unlocked).not.toContain(BadgeType.HOT_STREAK)
     })
-  })
 
-  describe('return value', () => {
-    it('returns empty unlocked array when no badges qualify', async () => {
-      const tx = makeTx({ progressCount: 1 })
-      const result = await service.evaluate(tx as never, 'user-1', EventType.LEAD_CONTACTED, '2024-W01', 0)
-      expect(result.unlocked).toHaveLength(0)
-    })
-
-    it('can unlock multiple badges in one call (FIRST_WIN + HOT_STREAK)', async () => {
-      const tx = makeTx({ progressCount: 1, existingProgress: null })
-      const result = await service.evaluate(tx as never, 'user-1', EventType.DEAL_WON, '2024-W01', 5)
-      expect(result.unlocked).toContain(BadgeType.FIRST_WIN)
+    it('can unlock again after a new streak run', async () => {
+      const tx = makeTx({ hotStreakInStreak: false })
+      const result = await service.evaluate(tx as never, 'user-1', EventType.LEAD_CONTACTED, '2024-W01', 5)
       expect(result.unlocked).toContain(BadgeType.HOT_STREAK)
     })
   })

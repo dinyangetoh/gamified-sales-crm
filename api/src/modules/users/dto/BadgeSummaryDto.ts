@@ -17,6 +17,12 @@ export class BadgeSummaryDto {
   awardedAt!: Date
 
   @ApiPropertyOptional()
+  awardCount!: number
+
+  @ApiPropertyOptional()
+  latestAwardedAt!: Date
+
+  @ApiPropertyOptional()
   currentCount!: number
 
   @ApiPropertyOptional()

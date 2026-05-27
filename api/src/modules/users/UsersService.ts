@@ -1,6 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { User, UserStats } from '@db'
-import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
+import { getEventTypeDisplayName } from '../../common/labels/eventTypeLabels'
+import { BadgeType } from '@db'
+import { getBadgeDefinition } from '../badges/badgeDefinitions'
+import { currentIsoWeek } from '../scoring/isoWeekUtils'
+import {
+  aggregateEarnedBadges,
+  aggregateInProgressBadges,
+  buildLockedBadges,
+} from './badgeProfileAggregation'
 import { UsersRepository } from './UsersRepository'
 
 @Injectable()
@@ -35,7 +43,7 @@ export class UsersService {
       level: u.stats?.level ?? 1,
       currentStreak: u.stats?.currentStreak ?? 0,
       longestStreak: u.stats?.longestStreak ?? 0,
-      badgeCount: u.badgeAwards.length,
+      badgeCount: new Set(u.badgeAwards.map((b) => b.badgeType)).size,
       eventCount: (u as any).eventCount ?? 0,
       lastActivityAt: u.stats?.lastActivityDate ?? null,
     }))
@@ -47,43 +55,11 @@ export class UsersService {
     const earned = await this.usersRepo.findBadgeAwards(userId)
     const inProgress = await this.usersRepo.findBadgeProgressInProgress(userId)
 
-    const earnedSet = new Set(earned.map((b) => b.badgeType))
-    const inProgressSet = new Set(inProgress.map((b) => b.badgeType))
-
-    const earnedBadges = earned.map((b) => {
-      const def = BADGE_DEFINITIONS.find((d) => d.type === b.badgeType)!
-      return {
-        type: b.badgeType,
-        displayName: def.displayName,
-        description: def.description,
-        iconUrl: def.iconUrl,
-        awardedAt: b.awardedAt,
-      }
-    })
-
-    const inProgressBadges = inProgress.map((p) => {
-      const def = BADGE_DEFINITIONS.find((d) => d.type === p.badgeType)!
-      return {
-        type: p.badgeType,
-        displayName: def.displayName,
-        description: def.description,
-        iconUrl: def.iconUrl,
-        currentCount: p.currentCount,
-        targetCount: p.targetCount,
-        progressPercent: Math.round((p.currentCount / p.targetCount) * 100),
-        weekKey: p.weekKey,
-      }
-    })
-
-    const lockedBadges = BADGE_DEFINITIONS.filter(
-      (d) => !earnedSet.has(d.type) && !inProgressSet.has(d.type),
-    ).map((d) => ({
-      type: d.type,
-      displayName: d.displayName,
-      description: d.description,
-      iconUrl: d.iconUrl,
-      locked: true,
-    }))
+    const earnedTypes = new Set(earned.map((b) => b.badgeType))
+    const earnedBadges = aggregateEarnedBadges(earned)
+    const inProgressBadges = aggregateInProgressBadges(inProgress, currentIsoWeek(), earnedTypes)
+    const inProgressTypes = new Set(inProgressBadges.map((b) => b.type as BadgeType))
+    const lockedBadges = buildLockedBadges(earnedTypes, inProgressTypes)
 
     return {
       userId: user.id,
@@ -107,9 +83,7 @@ export class UsersService {
     const [entries, total] = await this.usersRepo.findTimeline(userId, limit, offset)
 
     const timeline = entries.map((e) => {
-      const badgeDef = e.badgeType
-        ? BADGE_DEFINITIONS.find((d) => d.type === e.badgeType)
-        : null
+      const badgeDef = e.badgeType ? getBadgeDefinition(e.badgeType) : null
       return {
         id: e.id,
         type: e.type,
@@ -135,6 +109,14 @@ export class UsersService {
     const limit = params.limit ?? 50
     const offset = params.offset ?? 0
     const [events, total] = await this.usersRepo.findEventFeed(userId, { ...params, limit, offset })
-    return { events, total, limit, offset }
+    return {
+      events: events.map((e) => ({
+        ...e,
+        eventTypeDisplayName: getEventTypeDisplayName(e.eventType),
+      })),
+      total,
+      limit,
+      offset,
+    }
   }
 }

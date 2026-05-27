@@ -14,6 +14,9 @@ export class EventFeedItemDto {
   eventType!: string
 
   @ApiProperty()
+  eventTypeDisplayName!: string
+
+  @ApiProperty()
   entityId!: string
 
   @ApiProperty()

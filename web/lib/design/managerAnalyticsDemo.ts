@@ -5,11 +5,11 @@ export const TEAM_POINTS_TS = [820, 940, 1080, 1020, 1180, 1220, 1280, 1440]
 export const TEAM_EVENTS_TS = [82, 95, 110, 102, 118, 120, 122, 122]
 
 export const TEAM_EVENT_MIX = [
-  { label: 'LEAD_CONTACTED', value: 54, color: '#6c7280' },
-  { label: 'MEETING_COMPLETED', value: 28, color: '#4a63b8' },
-  { label: 'STAGE_ADVANCED', value: 24, color: '#7a4fbe' },
-  { label: 'DEAL_WON', value: 12, color: '#3a8f63' },
-  { label: 'DEAL_LOST', value: 4, color: '#b94a3b' },
+  { label: 'Lead Contacted', value: 54, color: '#6c7280' },
+  { label: 'Meeting Completed', value: 28, color: '#4a63b8' },
+  { label: 'Stage Advanced', value: 24, color: '#7a4fbe' },
+  { label: 'Deal Won', value: 12, color: '#3a8f63' },
+  { label: 'Deal Lost', value: 4, color: '#b94a3b' },
 ]
 
 export const LEVEL_DIST = [

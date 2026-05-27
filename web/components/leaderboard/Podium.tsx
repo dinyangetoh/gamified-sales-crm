@@ -120,8 +120,8 @@ export default function Podium({
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 4 }}>
-                  {(r.badges ?? []).slice(0, 4).map((b) => (
-                    <BadgeIcon key={b.type} type={b.type} size={20} />
+                  {(r.badges ?? []).slice(0, 4).map((b, idx) => (
+                    <BadgeIcon key={`${r.userId}-${b.type}-${idx}`} type={b.type} size={20} />
                   ))}
                 </div>
                 {r.eventMix && (

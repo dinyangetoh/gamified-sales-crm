@@ -97,8 +97,8 @@ export default function EventSimulatorResultModal({
                 Badges unlocked
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {state.result.badgesUnlocked.map((b) => (
-                  <div key={b.type} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {state.result.badgesUnlocked.map((b, idx) => (
+                  <div key={`${b.type}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <BadgeIcon type={b.type} size={36} />
                     <span style={{ fontSize: 13, fontWeight: 600 }}>{b.displayName}</span>
                   </div>

@@ -4,9 +4,22 @@ import { CacheKey } from '../../common/cache/CacheKey'
 import { CACHE_TTL_LEADERBOARD } from '../scoring/constants'
 import { currentIsoWeek, previousIsoWeek } from '../scoring/isoWeekUtils'
 import { deriveLevelLabel } from '../scoring/levelUtils'
-import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
+import { BadgeType } from '@db'
+import { getBadgeDefinition } from '../badges/badgeDefinitions'
 import { LeaderboardRepository } from './LeaderboardRepository'
 import { ScoringConfigService } from '../scoring/ScoringConfigService'
+
+function dedupeLeaderboardBadges(awards: Array<{ badgeType: BadgeType }>) {
+  const seen = new Set<BadgeType>()
+  const badges: Array<{ type: BadgeType; displayName: string; iconUrl: string }> = []
+  for (const b of awards) {
+    if (seen.has(b.badgeType)) continue
+    seen.add(b.badgeType)
+    const def = getBadgeDefinition(b.badgeType)!
+    badges.push({ type: b.badgeType, displayName: def.displayName, iconUrl: def.iconUrl })
+  }
+  return badges
+}
 
 @Injectable()
 export class LeaderboardService {
@@ -42,10 +55,7 @@ export class LeaderboardService {
       const level = ws.user.stats?.level ?? 1
       const levelLabel = deriveLevelLabel(totalXP, levels)
 
-      const badges = ws.user.badgeAwards.map((b) => {
-        const def = BADGE_DEFINITIONS.find((d) => d.type === b.badgeType)!
-        return { type: b.badgeType, displayName: def.displayName, iconUrl: def.iconUrl }
-      })
+      const badges = dedupeLeaderboardBadges(ws.user.badgeAwards)
 
       return {
         rank,
@@ -83,10 +93,7 @@ export class LeaderboardService {
       const pointsGap = above ? above.totalXP - s.totalXP : 0
       const levelLabel = deriveLevelLabel(s.totalXP, levels)
 
-      const badges = s.user.badgeAwards.map((b) => {
-        const def = BADGE_DEFINITIONS.find((d) => d.type === b.badgeType)!
-        return { type: b.badgeType, displayName: def.displayName, iconUrl: def.iconUrl }
-      })
+      const badges = dedupeLeaderboardBadges(s.user.badgeAwards)
 
       return {
         rank: idx + 1,

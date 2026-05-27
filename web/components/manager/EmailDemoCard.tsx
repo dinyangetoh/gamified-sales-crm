@@ -3,9 +3,11 @@
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { emailTemplateComponents, type EmailTemplateId } from '@/components/emails/emailTemplateRegistry'
+import { formatDisplayLabel } from '@/lib/labels/formatDisplayLabel'
 
 type TemplateItem = {
   templateId: string
+  templateDisplayName?: string
   role: 'rep' | 'manager'
   status: 'poc' | 'mvp'
   trigger: string
@@ -48,7 +50,7 @@ export default function EmailDemoCard({ templates }: { templates: TemplateItem[]
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ fontWeight: 600, fontSize: 12.5 }}>{t.templateId}</div>
+                <div style={{ fontWeight: 600, fontSize: 12.5 }}>{t.templateDisplayName ?? formatDisplayLabel(t.templateId)}</div>
                 <div className="num" style={{ fontSize: 11, color: 'var(--muted)' }}>
                   {t.status.toUpperCase()}
                 </div>

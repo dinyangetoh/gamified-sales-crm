@@ -110,8 +110,8 @@ export default function LeaderboardTable({
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
                   {showDelta && <RankDelta delta={delta} />}
                   <div style={{ display: 'flex', gap: 3 }}>
-                    {(r.badges ?? []).slice(0, 3).map((b) => (
-                      <BadgeIcon key={b.type} type={b.type} size={18} />
+                    {(r.badges ?? []).slice(0, 3).map((b, idx) => (
+                      <BadgeIcon key={`${r.userId}-${b.type}-${idx}`} type={b.type} size={18} />
                     ))}
                   </div>
                   <span style={{ color: 'var(--muted)', display: 'inline-flex' }}>{Icon.chev}</span>

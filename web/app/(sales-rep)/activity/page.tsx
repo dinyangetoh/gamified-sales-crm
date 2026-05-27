@@ -13,11 +13,13 @@ import { MY_EVENT_MIX, MY_PREV_WEEK, MY_WEEK_PTS } from '@/lib/design/repDemo'
 import useSession from '@/lib/auth/useSession'
 import { apiFetch } from '@/lib/api/client'
 import Button from '@/components/ui/Button'
+import { formatDisplayLabel } from '@/lib/labels/formatDisplayLabel'
 
 type EventFeedResponse = {
   events: Array<{
     eventId: string
     eventType: string
+    eventTypeDisplayName?: string
     entityId: string
     pointsAwarded: number
     capReached: boolean
@@ -81,7 +83,12 @@ export default function ActivityPage() {
     const list = data?.events ?? []
     const q = filter.trim().toLowerCase()
     if (!q) return list
-    return list.filter((e) => e.entityId.toLowerCase().includes(q) || e.eventType.toLowerCase().includes(q))
+    return list.filter(
+      (e) =>
+        e.entityId.toLowerCase().includes(q) ||
+        e.eventType.toLowerCase().includes(q) ||
+        (e.eventTypeDisplayName ?? formatDisplayLabel(e.eventType)).toLowerCase().includes(q),
+    )
   }, [data, filter])
 
   const weekPts = events.reduce((s, e) => s + e.pointsAwarded, 0)
@@ -175,7 +182,11 @@ export default function ActivityPage() {
               {
                 key: 'type',
                 header: 'Type',
-                render: (e) => <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{e.eventType}</span>,
+                render: (e) => (
+                  <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>
+                    {e.eventTypeDisplayName ?? formatDisplayLabel(e.eventType)}
+                  </span>
+                ),
               },
               {
                 key: 'entity',

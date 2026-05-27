@@ -160,11 +160,13 @@ model BadgeAward {
   id        String    @id @default(uuid())
   userId    String
   badgeType BadgeType
+  weekKey   String?
   awardedAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id])
 
-  @@unique([userId, badgeType])
+  @@index([userId, badgeType])
+  @@index([userId, badgeType, weekKey])
 }
 
 model BadgeProgress {

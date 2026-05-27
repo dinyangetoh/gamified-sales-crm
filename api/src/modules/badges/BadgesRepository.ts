@@ -1,17 +1,50 @@
 import { Injectable } from '@nestjs/common'
 import { BadgeType } from '@db'
+import { startOfDay, subDays } from 'date-fns'
 import type { TxClient } from '../../common/prisma/types'
 
 @Injectable()
 export class BadgesRepository {
   findBadgeAwards(tx: TxClient, userId: string) {
-    return tx.badgeAward.findMany({ where: { userId } })
+    return tx.badgeAward.findMany({ where: { userId }, orderBy: { awardedAt: 'asc' } })
   }
 
   findBadgeProgress(tx: TxClient, userId: string, badgeType: BadgeType, weekKey: string | null) {
     return tx.badgeProgress.findFirst({
       where: { userId, badgeType, weekKey },
     })
+  }
+
+  hasBadgeAward(tx: TxClient, userId: string, badgeType: BadgeType) {
+    return tx.badgeAward
+      .findFirst({ where: { userId, badgeType }, select: { id: true } })
+      .then((row) => row !== null)
+  }
+
+  hasBadgeAwardForWeek(tx: TxClient, userId: string, badgeType: BadgeType, weekKey: string) {
+    return tx.badgeAward
+      .findFirst({ where: { userId, badgeType, weekKey }, select: { id: true } })
+      .then((row) => row !== null)
+  }
+
+  hasHotStreakAwardInCurrentStreak(
+    tx: TxClient,
+    userId: string,
+    currentStreak: number,
+    asOf: Date,
+  ) {
+    if (currentStreak < 1) return Promise.resolve(false)
+    const streakStart = startOfDay(subDays(asOf, currentStreak - 1))
+    return tx.badgeAward
+      .findFirst({
+        where: {
+          userId,
+          badgeType: BadgeType.HOT_STREAK,
+          awardedAt: { gte: streakStart },
+        },
+        select: { id: true },
+      })
+      .then((row) => row !== null)
   }
 
   updateBadgeProgress(
@@ -49,7 +82,20 @@ export class BadgesRepository {
     })
   }
 
-  createBadgeAward(tx: TxClient, userId: string, badgeType: BadgeType) {
-    return tx.badgeAward.create({ data: { userId, badgeType } })
+  createBadgeAward(
+    tx: TxClient,
+    userId: string,
+    badgeType: BadgeType,
+    weekKey: string | null = null,
+    awardedAt?: Date,
+  ) {
+    return tx.badgeAward.create({
+      data: {
+        userId,
+        badgeType,
+        weekKey,
+        ...(awardedAt ? { awardedAt } : {}),
+      },
+    })
   }
 }

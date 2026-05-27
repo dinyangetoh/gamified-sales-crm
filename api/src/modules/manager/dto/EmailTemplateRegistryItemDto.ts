@@ -23,6 +23,10 @@ export class EmailTemplateRegistryItemDto {
   templateId!: EmailTemplateId
 
   @ApiProperty()
+  @IsString()
+  templateDisplayName!: string
+
+  @ApiProperty()
   @IsIn(roleValues)
   role!: EmailTemplateRole
 

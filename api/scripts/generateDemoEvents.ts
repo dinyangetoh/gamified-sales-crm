@@ -131,7 +131,7 @@ function buildWeekEvents(isoWeek: string, fileLabel: string): DemoEventDraft[] {
     events.push(...spreadRepWeek(isoWeek, rep, pattern))
   }
 
-  const baseWeek = (activeReps: RepKey[], days: number[] = [0, 1, 2, 3, 4]) => {
+  const baseWeek = (activeReps: RepKey[], days: number[] = [0, 2, 4]) => {
     for (const rep of activeReps) {
       filler(rep, days)
     }
@@ -158,12 +158,31 @@ function buildWeekEvents(isoWeek: string, fileLabel: string): DemoEventDraft[] {
       break
     case 'W22':
       baseWeek(['alice', 'bob', 'charlie', 'diana', 'fiona'])
+      events.push(
+        ev(U.alice, EventType.DEAL_WON, atWeekday(isoWeek, 0, 10, 0), 'alice-cc-w22-1'),
+        ev(U.alice, EventType.DEAL_WON, atWeekday(isoWeek, 2, 11, 0), 'alice-cc-w22-2'),
+        ev(U.alice, EventType.DEAL_WON, atWeekday(isoWeek, 4, 15, 0), 'alice-cc-w22-3'),
+      )
       events.push(ev(U.evan, EventType.MEETING_COMPLETED, atWeekday(isoWeek, 2, 14, 0), 'evan-mtg'))
       events.push(ev(U.diana, EventType.DEAL_LOST, atWeekday(isoWeek, 4, 16, 30), 'diana-lost'))
       events.push(ev(U.hannah, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 0, 9, 0), 'hannah-lead'))
       break
     case 'W23':
       baseWeek(['alice', 'bob', 'charlie', 'diana', 'evan', 'fiona'])
+      events.push(
+        ev(U.bob, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 0, 9, 0), 'bob-pipe-w23-1'),
+        ev(U.bob, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 1, 10, 0), 'bob-pipe-w23-2'),
+        ev(U.bob, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 2, 11, 0), 'bob-pipe-w23-3'),
+        ev(U.bob, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 3, 14, 0), 'bob-pipe-w23-4'),
+        ev(U.bob, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 4, 15, 0), 'bob-pipe-w23-5'),
+      )
+      events.push(
+        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 0, 9, 30), 'fiona-streak-w23-1'),
+        ev(U.fiona, EventType.MEETING_COMPLETED, atWeekday(isoWeek, 1, 10, 30), 'fiona-streak-w23-2'),
+        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 2, 11, 30), 'fiona-streak-w23-3'),
+        ev(U.fiona, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 3, 13, 0), 'fiona-streak-w23-4'),
+        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 4, 14, 30), 'fiona-streak-w23-5'),
+      )
       events.push(ev(U.diana, EventType.DEAL_WON, atWeekday(isoWeek, 2, 10, 0), 'diana-win'))
       events.push(ev(U.george, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 4, 15, 0), 'george-stage'))
       break
@@ -180,13 +199,6 @@ function buildWeekEvents(isoWeek: string, fileLabel: string): DemoEventDraft[] {
         ev(U.alice, EventType.DEAL_WON, atWeekday(isoWeek, 2, 11, 30), 'alice-cc-2'),
         ev(U.alice, EventType.DEAL_WON, atWeekday(isoWeek, 4, 16, 0), 'alice-cc-3'),
       )
-      events.push(
-        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 0, 9, 30), 'fiona-streak-1'),
-        ev(U.fiona, EventType.MEETING_COMPLETED, atWeekday(isoWeek, 1, 10, 30), 'fiona-streak-2'),
-        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 2, 11, 30), 'fiona-streak-3'),
-        ev(U.fiona, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 3, 13, 0), 'fiona-streak-4'),
-        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 4, 14, 30), 'fiona-streak-5'),
-      )
       baseWeek(['alice', 'charlie', 'diana', 'evan'], [0, 2, 4])
       events.push(ev(U.bob, EventType.DEAL_WON, atWeekday(isoWeek, 4, 17, 0), 'bob-first-win'))
       events.push(ev(U.hannah, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 2, 10, 0), 'hannah-last'))
@@ -199,9 +211,11 @@ function buildWeekEvents(isoWeek: string, fileLabel: string): DemoEventDraft[] {
         events.push(ev(U.george, EventType.LEAD_CONTACTED, t, `george-cap-${i + 1}`))
       }
       events.push(
-        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 0, 9, 0), 'fiona-w25-1'),
-        ev(U.fiona, EventType.MEETING_COMPLETED, atWeekday(isoWeek, 1, 10, 0), 'fiona-w25-2'),
-        ev(U.fiona, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 2, 11, 0), 'fiona-w25-3'),
+        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 0, 9, 0), 'fiona-streak-w25-1'),
+        ev(U.fiona, EventType.MEETING_COMPLETED, atWeekday(isoWeek, 1, 10, 0), 'fiona-streak-w25-2'),
+        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 2, 11, 0), 'fiona-streak-w25-3'),
+        ev(U.fiona, EventType.STAGE_ADVANCED, atWeekday(isoWeek, 3, 13, 0), 'fiona-streak-w25-4'),
+        ev(U.fiona, EventType.LEAD_CONTACTED, atWeekday(isoWeek, 4, 14, 0), 'fiona-streak-w25-5'),
       )
       events.push(
         ev(U.alice, EventType.MEETING_COMPLETED, atWeekday(isoWeek, 0, 9, 30), 'alice-w25-1'),

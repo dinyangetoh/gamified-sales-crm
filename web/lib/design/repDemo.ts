@@ -21,11 +21,11 @@ export const MY_STREAK_DAYS = [
 ]
 
 export const MY_EVENT_MIX = [
-  { label: 'LEAD_CONTACTED', value: 7, color: '#6c7280' },
-  { label: 'MEETING_COMPLETED', value: 3, color: '#4a63b8' },
-  { label: 'STAGE_ADVANCED', value: 4, color: '#7a4fbe' },
-  { label: 'DEAL_WON', value: 3, color: '#3a8f63' },
-  { label: 'DEAL_LOST', value: 1, color: '#b94a3b' },
+  { label: 'Lead Contacted', value: 7, color: '#6c7280' },
+  { label: 'Meeting Completed', value: 3, color: '#4a63b8' },
+  { label: 'Stage Advanced', value: 4, color: '#7a4fbe' },
+  { label: 'Deal Won', value: 3, color: '#3a8f63' },
+  { label: 'Deal Lost', value: 1, color: '#b94a3b' },
 ]
 
 export const MY_RECORDS = {

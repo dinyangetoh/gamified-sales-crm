@@ -1,9 +1,9 @@
 export const SIMULATOR_EVENT_TYPES = [
-  { value: 'LEAD_CONTACTED', label: 'Lead contacted' },
-  { value: 'MEETING_COMPLETED', label: 'Meeting completed' },
-  { value: 'STAGE_ADVANCED', label: 'Stage advanced' },
-  { value: 'DEAL_WON', label: 'Deal won' },
-  { value: 'DEAL_LOST', label: 'Deal lost' },
+  { value: 'LEAD_CONTACTED', label: 'Lead Contacted' },
+  { value: 'MEETING_COMPLETED', label: 'Meeting Completed' },
+  { value: 'STAGE_ADVANCED', label: 'Stage Advanced' },
+  { value: 'DEAL_WON', label: 'Deal Won' },
+  { value: 'DEAL_LOST', label: 'Deal Lost' },
 ] as const
 
 export type SimulatorEventType = (typeof SIMULATOR_EVENT_TYPES)[number]['value']

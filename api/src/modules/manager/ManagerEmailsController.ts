@@ -5,6 +5,7 @@ import { Roles } from '../../common/decorators/roles'
 import { CurrentUser } from '../../common/decorators/currentUser'
 import type { JwtPayload } from '../auth/JwtStrategy'
 import { NotificationsService } from '../notifications/NotificationsService'
+import { getEmailTemplateDisplayName } from '../../common/labels/emailTemplateLabels'
 import { EMAIL_TEMPLATES, getEmailTemplateById, type EmailTemplateId } from '../notifications/emailTemplates'
 import { EmailTemplateRegistryItemDto } from './dto/EmailTemplateRegistryItemDto'
 import { SendTestEmailDto, SendTestEmailResponseDto } from './dto/SendTestEmailDto'
@@ -22,6 +23,7 @@ export class ManagerEmailsController {
   async listTemplates(): Promise<EmailTemplateRegistryItemDto[]> {
     return EMAIL_TEMPLATES.map((t) => ({
       templateId: t.templateId,
+      templateDisplayName: getEmailTemplateDisplayName(t.templateId),
       role: t.role,
       status: t.status,
       trigger: t.trigger,

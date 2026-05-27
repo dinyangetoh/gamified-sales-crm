@@ -1,6 +1,6 @@
 import { mock, MockProxy } from 'jest-mock-extended'
 import { NotFoundException } from '@nestjs/common'
-import { Role } from '@prisma/client'
+import { BadgeType, Role } from '@prisma/client'
 import { UsersService } from '../../../src/modules/users/UsersService'
 import { UsersRepository } from '../../../src/modules/users/UsersRepository'
 
@@ -43,6 +43,55 @@ describe('UsersService', () => {
       const user = makeUser()
       usersRepo.findByEmail.mockResolvedValue(user)
       await expect(service.findByEmail('test@test.com')).resolves.toEqual(user)
+    })
+  })
+
+  describe('getProfile', () => {
+    it('aggregates earned badges with awardCount and dedupes in-progress', async () => {
+      const user = makeUser()
+      usersRepo.findById.mockResolvedValue(user)
+      usersRepo.findStats.mockResolvedValue({
+        userId: user.id,
+        totalXP: 100,
+        totalPoints: 100,
+        level: 2,
+        currentStreak: 5,
+        longestStreak: 5,
+        lastActivityDate: new Date(),
+        updatedAt: new Date(),
+      })
+      usersRepo.findBadgeAwards.mockResolvedValue([
+        { id: 'a1', userId: user.id, badgeType: BadgeType.HOT_STREAK, weekKey: null, awardedAt: new Date('2025-05-01') },
+        { id: 'a2', userId: user.id, badgeType: BadgeType.HOT_STREAK, weekKey: null, awardedAt: new Date('2025-05-20') },
+      ] as any)
+      usersRepo.findBadgeProgressInProgress.mockResolvedValue([
+        {
+          id: 'p1',
+          userId: user.id,
+          badgeType: BadgeType.PIPELINE_BUILDER,
+          currentCount: 1,
+          targetCount: 5,
+          weekKey: '2025-W19',
+          isCompleted: false,
+          updatedAt: new Date('2025-05-01'),
+        },
+        {
+          id: 'p2',
+          userId: user.id,
+          badgeType: BadgeType.PIPELINE_BUILDER,
+          currentCount: 2,
+          targetCount: 5,
+          weekKey: '2025-W20',
+          isCompleted: false,
+          updatedAt: new Date('2025-05-10'),
+        },
+      ] as any)
+
+      const profile = await service.getProfile(user.id)
+      expect(profile.badges.earned).toHaveLength(1)
+      expect(profile.badges.earned[0].awardCount).toBe(2)
+      expect(profile.badges.inProgress).toHaveLength(1)
+      expect(profile.badges.inProgress[0].type).toBe(BadgeType.PIPELINE_BUILDER)
     })
   })
 

@@ -28,7 +28,7 @@ type UserProfileResponse = {
     longestStreak: number
   } | null
   badges: {
-    earned: Array<{ type: string; displayName: string; awardedAt?: string }>
+    earned: Array<{ type: string; displayName: string; awardCount?: number; awardedAt?: string }>
     inProgress: Array<{ type: string; displayName: string; currentCount?: number; targetCount?: number }>
     locked: Array<{ type: string }>
   }

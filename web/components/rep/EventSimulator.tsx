@@ -3,12 +3,8 @@
 import { useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import Button from '@/components/ui/Button'
-import {
-  SIMULATOR_EVENT_TYPES,
-  type ProcessEventResult,
-  type SimulatorEventType,
-  newEventId,
-} from '@/lib/events/eventSimulatorTypes'
+import { type ProcessEventResult, type SimulatorEventType, newEventId } from '@/lib/events/eventSimulatorTypes'
+import { useEventTypeOptions } from '@/lib/events/useEventTypeOptions'
 
 export default function EventSimulator({
   userId,
@@ -17,6 +13,7 @@ export default function EventSimulator({
   userId: string
   onSent?: (result: ProcessEventResult) => void
 }) {
+  const eventTypeOptions = useEventTypeOptions()
   const [eventType, setEventType] = useState<SimulatorEventType>('LEAD_CONTACTED')
   const [entityId, setEntityId] = useState('deal-123')
   const [loading, setLoading] = useState(false)
@@ -63,9 +60,9 @@ export default function EventSimulator({
         onChange={(e) => setEventType(e.target.value as SimulatorEventType)}
         style={inputStyle}
       >
-        {SIMULATOR_EVENT_TYPES.map((t) => (
+        {eventTypeOptions.map((t) => (
           <option key={t.value} value={t.value}>
-            {t.label}
+            {t.displayName}
           </option>
         ))}
       </select>

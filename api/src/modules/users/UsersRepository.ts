@@ -29,6 +29,7 @@ export class UsersRepository {
   findBadgeProgressInProgress(userId: string) {
     return this.prisma.badgeProgress.findMany({
       where: { userId, isCompleted: false },
+      orderBy: { updatedAt: 'desc' },
     })
   }
 

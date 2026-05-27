@@ -5,6 +5,9 @@ export class ScoringRuleDto {
   eventType!: string
 
   @ApiProperty()
+  eventTypeDisplayName!: string
+
+  @ApiProperty()
   points!: number
 
   @ApiProperty()
@@ -17,6 +20,9 @@ export class ScoringRuleDto {
 export class DailyCapRuleDto {
   @ApiProperty()
   eventType!: string
+
+  @ApiProperty()
+  eventTypeDisplayName!: string
 
   @ApiProperty()
   maxCount!: number

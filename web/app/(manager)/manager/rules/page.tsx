@@ -11,8 +11,8 @@ import { Icon } from '@/components/ui/Icon'
 import { apiFetch } from '@/lib/api/client'
 
 type ManagerRulesResponse = {
-  scoringRules: Array<{ eventType: string; points: number; isActive: boolean; updatedAt: string }>
-  dailyCapRules: Array<{ eventType: string; maxCount: number; isActive: boolean; updatedAt: string }>
+  scoringRules: Array<{ eventType: string; eventTypeDisplayName: string; points: number; isActive: boolean; updatedAt: string }>
+  dailyCapRules: Array<{ eventType: string; eventTypeDisplayName: string; maxCount: number; isActive: boolean; updatedAt: string }>
   levelConfig: Array<{ level: number; minXP: number; label: string }>
   badges: Array<{ type: string; displayName: string; description: string; iconUrl: string; targetCount: number; windowType: string }>
 }
@@ -98,7 +98,7 @@ export default function ManagerRulesPage() {
                       borderBottom: '1px solid var(--divider)',
                     }}
                   >
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-2)' }}>{r.eventType}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{r.eventTypeDisplayName}</div>
                     <div style={{ textAlign: 'right' }} className="num">
                       <span style={{ fontSize: 14, fontWeight: 600, color: r.points < 0 ? 'var(--danger)' : 'var(--ink)' }}>
                         {r.points > 0 ? '+' : ''}

@@ -176,6 +176,7 @@ export class ScoringService {
         input.eventType,
         isoWeek,
         newStreak,
+        timestamp,
       )
 
       for (const badge of badgeRes.unlocked) {
