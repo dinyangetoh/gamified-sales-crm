@@ -3,7 +3,7 @@ import { CACHE_ADAPTER, ICacheAdapter } from '../../common/cache/ICacheAdapter'
 import { CacheKey } from '../../common/cache/CacheKey'
 import { ScoringConfig } from '../../common/config/scoringConfig.schema'
 import { CACHE_TTL_SCORING_CONFIG } from './constants'
-import { IScoringConfigRepository } from './IScoringConfigRepository'
+import { IScoringConfigRepository } from './repositories/IScoringConfigRepository'
 import { SCORING_CONFIG_REPOSITORY } from './scoringConfig.tokens'
 
 @Injectable()

@@ -306,19 +306,19 @@ classDiagram
         +getConfig() Promise~ScoringConfig~
     }
 
-    class DbScoringConfigRepository {
+    class FutureDbScoringConfigRepository {
         -scoringRepo: ScoringRepository
         +getConfig() Promise~ScoringConfig~
     }
 
     IScoringConfigRepository <|.. JsonScoringConfigRepository
-    IScoringConfigRepository <|.. DbScoringConfigRepository
-    DbScoringConfigRepository --> ScoringRepository : reads ScoringRule + LevelConfig + DailyCapConfig
+    IScoringConfigRepository <|.. FutureDbScoringConfigRepository
+    FutureDbScoringConfigRepository --> ScoringRepository : MVP reads ScoringRule + LevelConfig + DailyCapConfig
 ```
 
 **POC (current):** `JsonScoringConfigRepository` reads `scoring-config.json` once and caches in memory — zero DB round-trips per request.
 
-**MVP swap:** Change the NestJS provider token from `JsonScoringConfigRepository` to `DbScoringConfigRepository`. `ScoringService` and all callers depend on `IScoringConfigRepository`, not the concrete class — the swap is a one-line provider change.
+**MVP swap:** Implement `IScoringConfigRepository` against Prisma config tables and change the NestJS provider token from `JsonScoringConfigRepository` to that implementation. Callers use `ScoringConfigService` / `IScoringConfigRepository`, not the concrete class.
 
 ### Level Thresholds
 
@@ -636,7 +636,7 @@ Redis handles the hot path (sub-millisecond). Postgres handles the race conditio
 | **Scoring inside transaction** | Async scoring | XP, badges, and streak must be consistent with each other; async scoring creates a consistency window |
 | **ISO week boundary** for weekly badges | Rolling 7-day window | Simpler, predictable, aligns with natural work week; less fair for reps who work weekends |
 | **Leaderboard from Postgres** | Redis Sorted Sets | Correct for POC scale; migration path documented with trigger metric (p99 > 100ms) |
-| **`JsonScoringConfigRepository` as default** | `DbScoringConfigRepository` | JSON file is zero-dependency for the POC; swapping to the DB-backed implementation requires changing one NestJS provider token — no other code changes |
+| **`JsonScoringConfigRepository` as default** | Future DB-backed `IScoringConfigRepository` | JSON file is zero-dependency for the POC; MVP adds a Prisma-backed implementation and changes one NestJS provider token |
 
 ---
 

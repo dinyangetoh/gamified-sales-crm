@@ -1,4 +1,4 @@
-import { JsonScoringConfigRepository } from '../../../src/modules/scoring/JsonScoringConfigRepository'
+import { JsonScoringConfigRepository } from '../../../src/modules/scoring/repositories/JsonScoringConfigRepository'
 
 describe('JsonScoringConfigRepository', () => {
   it('returns the same config on repeated calls', async () => {

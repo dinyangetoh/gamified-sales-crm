@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import EventSimulatorResultModal from '@/components/manager/EventSimulatorResultModal'
+import EventSimulatorResultModal from '@/components/admin/EventSimulatorResultModal'
 import { apiFetch } from '@/lib/api/client'
 import {
   type ProcessEventResult,
@@ -35,7 +35,7 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
 }
 
-export default function ManagerEventSimulator({ reps }: { reps: RepOption[] }) {
+export default function AdminEventSimulator({ reps }: { reps: RepOption[] }) {
   const eventTypeOptions = useEventTypeOptions()
   const [userId, setUserId] = useState(reps[0]?.userId ?? '')
   const [eventType, setEventType] = useState<SimulatorEventType>('LEAD_CONTACTED')

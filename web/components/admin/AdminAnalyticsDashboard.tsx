@@ -13,7 +13,7 @@ import DonutLegend from '@/components/charts/DonutLegend'
 import BarChart from '@/components/charts/BarChart'
 import Heatmap from '@/components/charts/Heatmap'
 import { Icon, initialsFromName, levelTone } from '@/components/ui/Icon'
-import NudgeButton from '@/components/manager/NudgeButton'
+import NudgeButton from '@/components/admin/NudgeButton'
 import {
   ACTIVITY_HEATMAP,
   DEMO_REPS_BY_ID,
@@ -41,7 +41,7 @@ type OverviewRep = {
 
 type AtRiskItem = { userId: string; name: string; reason?: string }
 
-export default function ManagerAnalyticsDashboard({
+export default function AdminAnalyticsDashboard({
   week,
   top3,
   atRisk,

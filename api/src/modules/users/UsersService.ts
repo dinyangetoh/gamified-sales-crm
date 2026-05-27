@@ -1,15 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { User, UserStats } from '@db'
+import { User, UserStats, BadgeType } from '@db'
 import { getEventTypeDisplayName } from '../../common/labels/eventTypeLabels'
-import { BadgeType } from '@db'
-import { getBadgeDefinition } from '../badges/badgeDefinitions'
-import { currentIsoWeek } from '../scoring/isoWeekUtils'
-import {
-  aggregateEarnedBadges,
-  aggregateInProgressBadges,
-  buildLockedBadges,
-} from './badgeProfileAggregation'
+import { BADGE_DEFINITIONS, getBadgeDefinition } from '../badges/badgeDefinitions'
+import { currentIsoWeek } from '../../common/helpers/scoring/isoWeekHelper'
 import { UsersRepository } from './UsersRepository'
+
+type BadgeAwardRow = { badgeType: BadgeType; awardedAt: Date; weekKey?: string | null }
+type BadgeProgressRow = {
+  badgeType: BadgeType
+  currentCount: number
+  targetCount: number
+  weekKey: string | null
+  updatedAt: Date
+}
 
 @Injectable()
 export class UsersService {
@@ -56,10 +59,14 @@ export class UsersService {
     const inProgress = await this.usersRepo.findBadgeProgressInProgress(userId)
 
     const earnedTypes = new Set(earned.map((b) => b.badgeType))
-    const earnedBadges = aggregateEarnedBadges(earned)
-    const inProgressBadges = aggregateInProgressBadges(inProgress, currentIsoWeek(), earnedTypes)
+    const earnedBadges = this.aggregateEarnedBadges(earned)
+    const inProgressBadges = this.aggregateInProgressBadges(
+      inProgress,
+      currentIsoWeek(),
+      earnedTypes,
+    )
     const inProgressTypes = new Set(inProgressBadges.map((b) => b.type as BadgeType))
-    const lockedBadges = buildLockedBadges(earnedTypes, inProgressTypes)
+    const lockedBadges = this.buildLockedBadges(earnedTypes, inProgressTypes)
 
     return {
       userId: user.id,
@@ -118,5 +125,87 @@ export class UsersService {
       limit,
       offset,
     }
+  }
+
+  private aggregateEarnedBadges(awards: BadgeAwardRow[]) {
+    const byType = new Map<BadgeType, BadgeAwardRow[]>()
+
+    for (const award of awards) {
+      const list = byType.get(award.badgeType) ?? []
+      list.push(award)
+      byType.set(award.badgeType, list)
+    }
+
+    return Array.from(byType.entries()).map(([type, rows]) => {
+      const def = getBadgeDefinition(type)!
+      const latest = rows.reduce((a, b) => (a.awardedAt > b.awardedAt ? a : b))
+      return {
+        type,
+        displayName: def.displayName,
+        description: def.description,
+        iconUrl: def.iconUrl,
+        awardCount: rows.length,
+        latestAwardedAt: latest.awardedAt,
+        awardedAt: latest.awardedAt,
+      }
+    })
+  }
+
+  private aggregateInProgressBadges(
+    progressRows: BadgeProgressRow[],
+    week: string,
+    earnedTypes: Set<BadgeType>,
+  ) {
+    const byType = new Map<BadgeType, BadgeProgressRow>()
+
+    for (const row of progressRows) {
+      const def = getBadgeDefinition(row.badgeType)
+      if (def?.repeatPolicy === 'once' && earnedTypes.has(row.badgeType)) {
+        continue
+      }
+
+      const existing = byType.get(row.badgeType)
+      if (!existing) {
+        byType.set(row.badgeType, row)
+        continue
+      }
+
+      byType.set(row.badgeType, this.pickPreferredProgressRow(existing, row, week))
+    }
+
+    return Array.from(byType.values()).map((p) => {
+      const def = getBadgeDefinition(p.badgeType)!
+      return {
+        type: p.badgeType,
+        displayName: def.displayName,
+        description: def.description,
+        iconUrl: def.iconUrl,
+        currentCount: p.currentCount,
+        targetCount: p.targetCount,
+        progressPercent: Math.round((p.currentCount / p.targetCount) * 100),
+        weekKey: p.weekKey,
+      }
+    })
+  }
+
+  private pickPreferredProgressRow(a: BadgeProgressRow, b: BadgeProgressRow, week: string) {
+    if (a.weekKey === week) return a
+    if (b.weekKey === week) return b
+    const aRatio = a.currentCount / a.targetCount
+    const bRatio = b.currentCount / b.targetCount
+    if (aRatio !== bRatio) return aRatio > bRatio ? a : b
+    return a.updatedAt > b.updatedAt ? a : b
+  }
+
+  private buildLockedBadges(earnedTypes: Set<BadgeType>, inProgressTypes: Set<BadgeType>) {
+    return BADGE_DEFINITIONS.filter(
+      (d) => !earnedTypes.has(d.type) && !inProgressTypes.has(d.type),
+    ).map((d) => ({
+      type: d.type,
+      displayName: d.displayName,
+      description: d.description,
+      iconUrl: d.iconUrl,
+      locked: true,
+    }))
   }
 }

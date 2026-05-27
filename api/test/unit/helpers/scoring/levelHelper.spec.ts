@@ -1,4 +1,4 @@
-import { deriveLevel, deriveLevelLabel } from '../../../src/modules/scoring/levelUtils'
+import { deriveLevel, deriveLevelLabel } from '../../../../src/common/helpers/scoring/levelHelper'
 
 const LEVELS = [
   { level: 1, minXP: 0, label: 'Rookie' },

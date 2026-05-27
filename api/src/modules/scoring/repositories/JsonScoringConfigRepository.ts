@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
-import { loadScoringConfig } from '../../common/config/loadScoringConfig'
-import { ScoringConfig } from '../../common/config/scoringConfig.schema'
+import { loadScoringConfig } from '../../../common/config/loadScoringConfig'
+import { ScoringConfig } from '../../../common/config/scoringConfig.schema'
 import { IScoringConfigRepository } from './IScoringConfigRepository'
 
 @Injectable()

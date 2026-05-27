@@ -15,7 +15,6 @@ function isoWeekToDateStart(isoWeek: string): Date {
   const year = Number(yearStr)
   const week = Number(weekStr)
 
-  // ISO week 1 is the week containing Jan 4.
   const jan4 = new Date(Date.UTC(year, 0, 4))
   const week1Start = startOfISOWeek(jan4)
   return addDays(week1Start, (week - 1) * 7)

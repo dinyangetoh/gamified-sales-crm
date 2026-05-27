@@ -4,11 +4,11 @@ import { LeaderboardModule } from '../leaderboard/LeaderboardModule'
 import { UsersModule } from '../users/UsersModule'
 import { NotificationsModule } from '../notifications/NotificationsModule'
 import { AdminOverviewService } from './AdminOverviewService'
-import { AdminOverviewController } from './AdminOverviewController'
-import { AdminNotificationsController } from './AdminNotificationsController'
-import { AdminEmailsController } from './AdminEmailsController'
-import { AdminRulesController } from './AdminRulesController'
-import { AdminRepsController } from './AdminRepsController'
+import { AdminOverviewController } from './controllers/AdminOverviewController'
+import { AdminNotificationsController } from './controllers/AdminNotificationsController'
+import { AdminEmailsController } from './controllers/AdminEmailsController'
+import { AdminRulesController } from './controllers/AdminRulesController'
+import { AdminRepsController } from './controllers/AdminRepsController'
 
 @Module({
   imports: [ConfigModule, LeaderboardModule, UsersModule, NotificationsModule],

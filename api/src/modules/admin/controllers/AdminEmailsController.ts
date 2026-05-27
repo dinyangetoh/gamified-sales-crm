@@ -1,14 +1,14 @@
 import { BadRequestException, Body, Controller, Get, Param, Post } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { Role } from '@db'
-import { Roles } from '../../common/decorators/roles'
-import { CurrentUser } from '../../common/decorators/currentUser'
-import type { JwtPayload } from '../auth/JwtStrategy'
-import { NotificationsService } from '../notifications/NotificationsService'
-import { getEmailTemplateDisplayName } from '../../common/labels/emailTemplateLabels'
-import { EMAIL_TEMPLATES, getEmailTemplateById, type EmailTemplateId } from '../notifications/emailTemplates'
-import { EmailTemplateRegistryItemDto } from './dto/EmailTemplateRegistryItemDto'
-import { SendTestEmailDto, SendTestEmailResponseDto } from './dto/SendTestEmailDto'
+import { Roles } from '../../../common/decorators/roles'
+import { CurrentUser } from '../../../common/decorators/currentUser'
+import type { JwtPayload } from '../../auth/JwtStrategy'
+import { NotificationsService } from '../../notifications/NotificationsService'
+import { getEmailTemplateDisplayName } from '../../../common/labels/emailTemplateLabels'
+import { EMAIL_TEMPLATES, getEmailTemplateById, type EmailTemplateId } from '../../notifications/emailTemplates'
+import { EmailTemplateRegistryItemDto } from '../dto/EmailTemplateRegistryItemDto'
+import { SendTestEmailDto, SendTestEmailResponseDto } from '../dto/SendTestEmailDto'
 
 @ApiTags('admin')
 @ApiBearerAuth()

@@ -2044,14 +2044,14 @@ becomes a write hotspot. Redis locks when scoring workers scale horizontally.
 
 **Decision:** `IScoringConfigRepository` with `JsonScoringConfigRepository` (POC) reading
 [`scoring-config.json`](../api/src/common/config/scoring-config.json). `ScoringConfigService`
-adds Redis caching and invalidation. `DbScoringConfigRepository` maps existing Prisma tables
+adds Redis caching and invalidation. A DB-backed `IScoringConfigRepository` maps existing Prisma tables
 for a one-line Nest swap when manager rule edits ship. DB tables are seeded from JSON for
 demo parity, not used at runtime in POC.
 
 **Alternative:** DB-only at runtime from day one.
 
 **Tradeoff:** Spec-exact defaults without a deploy; clear migration path to editable rules
-via `PATCH /admin/rules` + `DbScoringConfigRepository` + `ScoringConfigService.invalidate()`.
+via `PATCH /admin/rules` + DB-backed `IScoringConfigRepository` + `ScoringConfigService.invalidate()`.
 
 ---
 

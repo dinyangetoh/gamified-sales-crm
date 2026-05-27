@@ -1,4 +1,4 @@
-import { computeStreakUpdate } from '../../../src/modules/scoring/streakUtils'
+import { computeStreakUpdate } from '../../../../src/common/helpers/scoring/streakHelper'
 
 function daysAgo(n: number): Date {
   const d = new Date()

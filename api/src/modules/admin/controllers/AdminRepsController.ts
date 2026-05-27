@@ -1,9 +1,9 @@
 import { Controller, Get } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { Role } from '@db'
-import { Roles } from '../../common/decorators/roles'
-import { SalesRepSummaryDto } from '../leaderboard/dto/SalesRepSummaryDto'
-import { UsersService } from '../users/UsersService'
+import { Roles } from '../../../common/decorators/roles'
+import { SalesRepSummaryDto } from '../../leaderboard/dto/SalesRepSummaryDto'
+import { UsersService } from '../../users/UsersService'
 
 @ApiTags('admin')
 @ApiBearerAuth()

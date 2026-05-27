@@ -1,35 +1,11 @@
 import { Injectable } from '@nestjs/common'
 import { EventType, TimelineEventType, BadgeType } from '@db'
-import { PrismaService } from '../../common/prisma/PrismaService'
-import type { TxClient } from '../../common/prisma/types'
+import { PrismaService } from '../../../common/prisma/PrismaService'
+import type { TxClient } from '../../../common/prisma/types'
 
 @Injectable()
 export class ScoringRepository {
   constructor(private readonly prisma: PrismaService) {}
-
-  findScoringRules() {
-    return this.prisma.scoringRule.findMany({ where: { isActive: true } })
-  }
-
-  findLevelConfigs() {
-    return this.prisma.levelConfig.findMany({ orderBy: { minXP: 'asc' } })
-  }
-
-  findDailyCapConfigs() {
-    return this.prisma.dailyCapConfig.findMany({ where: { isActive: true } })
-  }
-
-  findAllScoringRules() {
-    return this.prisma.scoringRule.findMany({ orderBy: { eventType: 'asc' } })
-  }
-
-  findAllLevelConfigs() {
-    return this.prisma.levelConfig.findMany({ orderBy: { level: 'asc' } })
-  }
-
-  findAllDailyCapConfigs() {
-    return this.prisma.dailyCapConfig.findMany({ orderBy: { eventType: 'asc' } })
-  }
 
   findDailyCap(userId: string, eventType: EventType, date: Date) {
     return this.prisma.dailyCap.findUnique({

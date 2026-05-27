@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import AppShell from '@/components/layout/AppShell'
 import Card from '@/components/ui/Card'
-import ManagerEventSimulator from '@/components/manager/ManagerEventSimulator'
+import AdminEventSimulator from '@/components/admin/AdminEventSimulator'
 import { apiFetch } from '@/lib/api/client'
 
 type SalesRepSummary = {
@@ -47,7 +47,7 @@ export default function ManagerSimulatorPage() {
       {!err && reps && reps.length === 0 && (
         <Card title="No reps" subtitle="Seed the database or add sales reps to use the simulator." />
       )}
-      {!err && reps && reps.length > 0 && <ManagerEventSimulator reps={reps} />}
+      {!err && reps && reps.length > 0 && <AdminEventSimulator reps={reps} />}
     </AppShell>
   )
 }

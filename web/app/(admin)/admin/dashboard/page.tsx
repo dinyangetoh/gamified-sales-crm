@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import AppShell from '@/components/layout/AppShell'
 import Toast from '@/components/ui/Toast'
-import EmailDemoCard from '@/components/manager/EmailDemoCard'
-import ManagerAnalyticsDashboard from '@/components/manager/ManagerAnalyticsDashboard'
-import WeekPicker from '@/components/manager/WeekPicker'
-import RepFilter from '@/components/manager/RepFilter'
-import ExportButton from '@/components/manager/ExportButton'
+import EmailDemoCard from '@/components/admin/EmailDemoCard'
+import AdminAnalyticsDashboard from '@/components/admin/AdminAnalyticsDashboard'
+import WeekPicker from '@/components/admin/WeekPicker'
+import RepFilter from '@/components/admin/RepFilter'
+import ExportButton from '@/components/admin/ExportButton'
 import Card from '@/components/ui/Card'
 import { apiFetch } from '@/lib/api/client'
 import { recentIsoWeeks } from '@/lib/design/weekUtils'
@@ -155,7 +155,7 @@ export default function ManagerDashboardPage() {
 
         {!err && overview && (
           <>
-            <ManagerAnalyticsDashboard
+            <AdminAnalyticsDashboard
               week={week}
               top3={top3}
               atRisk={overview.atRisk ?? []}

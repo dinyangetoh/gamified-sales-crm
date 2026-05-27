@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { currentIsoWeek } from '../scoring/isoWeekUtils'
+import { currentIsoWeek } from '../../common/helpers/scoring/isoWeekHelper'
 import { LeaderboardService } from '../leaderboard/LeaderboardService'
 import { UsersService } from '../users/UsersService'
 import {

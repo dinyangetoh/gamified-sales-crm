@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { getDay, parseISO } from 'date-fns'
-import { getIsoWeek } from '../modules/scoring/isoWeekUtils'
+import { getIsoWeek } from '../common/helpers/scoring/isoWeekHelper'
 import {
   demoEventSchema,
   demoManifestSchema,

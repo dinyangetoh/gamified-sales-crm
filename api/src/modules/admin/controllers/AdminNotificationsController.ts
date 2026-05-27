@@ -1,9 +1,9 @@
 import { Controller, Get, Query, DefaultValuePipe, ParseIntPipe } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { Role } from '@db'
-import { Roles } from '../../common/decorators/roles'
-import { NotificationsService } from '../notifications/NotificationsService'
-import { NotificationLogResponseDto } from './dto/NotificationLogResponseDto'
+import { Roles } from '../../../common/decorators/roles'
+import { NotificationsService } from '../../notifications/NotificationsService'
+import { NotificationLogResponseDto } from '../dto/NotificationLogResponseDto'
 
 @ApiTags('admin')
 @ApiBearerAuth()

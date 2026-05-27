@@ -1,7 +1,7 @@
 import { mock, MockProxy } from 'jest-mock-extended'
 import { Test } from '@nestjs/testing'
 import { ScoringConfigService } from '../../../src/modules/scoring/ScoringConfigService'
-import { IScoringConfigRepository } from '../../../src/modules/scoring/IScoringConfigRepository'
+import { IScoringConfigRepository } from '../../../src/modules/scoring/repositories/IScoringConfigRepository'
 import { SCORING_CONFIG_REPOSITORY } from '../../../src/modules/scoring/scoringConfig.tokens'
 import { ICacheAdapter, CACHE_ADAPTER } from '../../../src/common/cache/ICacheAdapter'
 import { CacheKey } from '../../../src/common/cache/CacheKey'

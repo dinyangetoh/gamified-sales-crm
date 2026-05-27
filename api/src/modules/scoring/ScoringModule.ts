@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common'
 import { BullModule } from '@nestjs/bullmq'
-import { ScoringRepository } from './ScoringRepository'
+import { ScoringRepository } from './repositories/ScoringRepository'
 import { ScoringService } from './ScoringService'
+import { ScoringEventProcessor } from './ScoringEventProcessor'
 import { ScoringConfigService } from './ScoringConfigService'
-import { JsonScoringConfigRepository } from './JsonScoringConfigRepository'
-import { DbScoringConfigRepository } from './DbScoringConfigRepository'
+import { JsonScoringConfigRepository } from './repositories/JsonScoringConfigRepository'
 import { SCORING_CONFIG_REPOSITORY } from './scoringConfig.tokens'
 import { BadgesModule } from '../badges/BadgesModule'
 import { UsersModule } from '../users/UsersModule'
@@ -18,9 +18,9 @@ import { QueueName } from '../../common/queues/QueueName'
   ],
   providers: [
     ScoringRepository,
-    DbScoringConfigRepository,
     { provide: SCORING_CONFIG_REPOSITORY, useClass: JsonScoringConfigRepository },
     ScoringConfigService,
+    ScoringEventProcessor,
     ScoringService,
   ],
   exports: [ScoringRepository, ScoringService, ScoringConfigService],
