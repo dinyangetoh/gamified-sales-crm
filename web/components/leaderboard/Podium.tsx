@@ -6,23 +6,44 @@ import RankDelta from '@/components/ui/RankDelta'
 import Streak from '@/components/ui/Streak'
 import Crown from '@/components/charts/Crown'
 import Medal from '@/components/charts/Medal'
+import StackedBar from '@/components/charts/StackedBar'
 import { initialsFromName, levelTone } from '@/components/ui/Icon'
 
 export type PodiumEntry = {
   userId: string
   name: string
+  email?: string
   rank: number
   weekPoints: number
   level: number
   levelLabel: string
   currentStreak: number
+  calls?: number
+  meetings?: number
+  stages?: number
+  wins?: number
   rankDelta?: number
   lastWeekRank?: number
   badges?: Array<{ type: string }>
   activity?: number
+  eventMix?: { v: number; c: string }[]
 }
 
-export default function Podium({ entries, currentUserId }: { entries: PodiumEntry[]; currentUserId?: string }) {
+export default function Podium({
+  entries,
+  currentUserId,
+  showDelta = true,
+  title = 'The podium',
+  subtitle = 'Week standings',
+  statsRow,
+}: {
+  entries: PodiumEntry[]
+  currentUserId?: string
+  showDelta?: boolean
+  title?: string
+  subtitle?: string
+  statsRow?: Array<{ label: string; value: string }>
+}) {
   const top3 = entries.slice(0, 3)
   if (top3.length < 3) return null
 
@@ -33,10 +54,19 @@ export default function Podium({ entries, currentUserId }: { entries: PodiumEntr
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-            Week standings
+            {subtitle}
           </div>
-          <h2 style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em' }}>The podium</h2>
+          <h2 style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em' }}>{title}</h2>
         </div>
+        {statsRow && statsRow.length > 0 && (
+          <div style={{ display: 'flex', gap: 18, fontSize: 11, color: 'var(--muted)' }}>
+            {statsRow.map((s) => (
+              <span key={s.label}>
+                {s.label} <span className="num" style={{ color: 'var(--ink)', fontWeight: 600 }}>{s.value}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: 18, alignItems: 'end' }}>
@@ -85,7 +115,7 @@ export default function Podium({ entries, currentUserId }: { entries: PodiumEntr
                     <span style={{ fontSize: 11, color: 'var(--muted)' }}>pts</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 8 }}>
-                    <RankDelta delta={delta} />
+                    {showDelta && <RankDelta delta={delta} />}
                     {r.currentStreak >= 3 && <Streak days={r.currentStreak} />}
                   </div>
                 </div>
@@ -94,6 +124,19 @@ export default function Podium({ entries, currentUserId }: { entries: PodiumEntr
                     <BadgeIcon key={b.type} type={b.type} size={20} />
                   ))}
                 </div>
+                {r.eventMix && (
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>
+                      Event mix
+                    </div>
+                    <StackedBar
+                      segments={r.eventMix}
+                      max={r.eventMix.reduce((sum, seg) => sum + seg.v, 0) || 1}
+                      width={isFirst ? 280 : 240}
+                      height={8}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )

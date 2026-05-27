@@ -116,13 +116,15 @@ export default function DashboardPage() {
   }, [profile])
 
   const rankDelta = myEntry?.rankDelta ?? (myEntry?.lastWeekRank != null ? myEntry.lastWeekRank - myEntry.rank : undefined)
+  const weeklyContext =
+    myEntry?.lastWeekRank != null ? `Week · Acme Sales · Last week #${myEntry.lastWeekRank}` : 'Week · Acme Sales'
 
   return (
     <AppShell
       role="rep"
       active="dashboard"
       title={profile ? `Good afternoon, ${profile.name.split(' ')[0]}` : 'Dashboard'}
-      sub="Week · Acme Sales"
+      sub={weeklyContext}
       actions={
         <>
           <a href="/activity" className="btn ghost sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
@@ -168,7 +170,11 @@ export default function DashboardPage() {
             )}
             <Card
               title="Your week"
-              subtitle="Points scored per day · sample comparison"
+              subtitle={
+                myEntry?.lastWeekRank != null
+                  ? `Points scored per day · Last week rank #${myEntry.lastWeekRank}`
+                  : 'Points scored per day · sample comparison'
+              }
               action={
                 <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>

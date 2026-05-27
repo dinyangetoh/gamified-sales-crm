@@ -34,11 +34,17 @@ type SalesRepSummary = {
   email: string
   level: number
   levelLabel: string
-  weekPoints: number
   totalXP: number
   currentStreak: number
   badgeCount: number
   eventCount?: number
+}
+
+type WeeklyLeaderboardResponse = {
+  entries: Array<{
+    userId: string
+    weekPoints?: number
+  }>
 }
 
 type EmailTemplateRegistryItem = {
@@ -53,6 +59,7 @@ export default function ManagerDashboardPage() {
   const [week, setWeek] = useState(recentIsoWeeks(1)[0] ?? '2025-W21')
   const [overview, setOverview] = useState<ManagerOverviewResponse | null>(null)
   const [reps, setReps] = useState<SalesRepSummary[] | null>(null)
+  const [weeklyLeaderboard, setWeeklyLeaderboard] = useState<WeeklyLeaderboardResponse | null>(null)
   const [templates, setTemplates] = useState<EmailTemplateRegistryItem[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -62,14 +69,16 @@ export default function ManagerDashboardPage() {
     async function load() {
       setErr(null)
       try {
-        const [o, r, t] = await Promise.all([
+        const [o, r, lb, t] = await Promise.all([
           apiFetch<ManagerOverviewResponse>(`/manager/overview?week=${encodeURIComponent(week)}`),
           apiFetch<SalesRepSummary[]>('/manager/reps'),
+          apiFetch<WeeklyLeaderboardResponse>(`/leaderboard?week=${encodeURIComponent(week)}`),
           apiFetch<EmailTemplateRegistryItem[]>('/manager/emails/templates'),
         ])
         if (cancelled) return
         setOverview(o)
         setReps(r)
+        setWeeklyLeaderboard(lb)
         setTemplates(t)
       } catch (e) {
         if (cancelled) return
@@ -84,20 +93,25 @@ export default function ManagerDashboardPage() {
 
   const exportRows = useMemo(() => {
     if (!reps) return []
+    const weekPointsByUser = new Map(
+      (weeklyLeaderboard?.entries ?? []).map((entry) => [entry.userId, entry.weekPoints ?? 0]),
+    )
     return reps.map((r) => ({
       name: r.name,
       email: r.email,
       level: r.levelLabel,
-      weekPoints: r.weekPoints,
+      weekPoints: weekPointsByUser.get(r.userId) ?? 0,
       totalXP: r.totalXP,
       streak: r.currentStreak,
       badges: r.badgeCount,
       events: r.eventCount ?? 0,
     }))
-  }, [reps])
+  }, [reps, weeklyLeaderboard])
 
   const totalEvents = reps?.reduce((s, r) => s + (r.eventCount ?? 0), 0) ?? 0
-  const totalPoints = reps?.reduce((s, r) => s + r.weekPoints, 0) ?? 0
+  const totalPoints = (weeklyLeaderboard?.entries ?? []).reduce((sum, entry) => {
+    return sum + (entry.weekPoints ?? 0)
+  }, 0)
 
   const top3 =
     overview?.top3?.map((r) => ({
