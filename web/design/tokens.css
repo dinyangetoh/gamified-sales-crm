@@ -1,0 +1,143 @@
+/* ─── Gamification CRM design tokens ─────────────────────────── */
+:root {
+  /* Surfaces */
+  --bg: #f7f5f0;
+  --bg-sub: #f1eee6;
+  --surface: #ffffff;
+  --surface-2: #fbfaf6;
+  --border: #e8e4d9;
+  --border-strong: #d8d3c5;
+  --divider: #efece3;
+
+  /* Text */
+  --ink: #15140f;
+  --ink-2: #3a3730;
+  --muted: #7a756b;
+  --muted-2: #a39d8f;
+
+  /* Accents */
+  --accent: #15140f;          /* primary CTA dark */
+  --accent-fg: #fffdf6;
+  --flame: #d96a37;           /* streak / energy */
+  --flame-soft: #fbe7d8;
+  --success: #3a8f63;
+  --success-soft: #e1f0e6;
+  --warn: #c98a1f;
+  --warn-soft: #f8ecd0;
+  --danger: #b94a3b;
+  --danger-soft: #f4dcd6;
+
+  /* Levels */
+  --lv1: #6c7280;             /* Rookie  · slate */
+  --lv1-soft: #e7e6e2;
+  --lv2: #4a63b8;             /* Closer  · indigo */
+  --lv2-soft: #e0e4f3;
+  --lv3: #7a4fbe;             /* Elite   · violet */
+  --lv3-soft: #ece1f3;
+  --lv4: #b88420;             /* Legend  · amber */
+  --lv4-soft: #f4e7c8;
+
+  /* Radii / shadow */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --shadow-sm: 0 1px 0 rgba(20,15,0,0.03), 0 1px 2px rgba(20,15,0,0.04);
+  --shadow-md: 0 1px 0 rgba(20,15,0,0.04), 0 4px 14px rgba(20,15,0,0.05);
+  --shadow-lg: 0 12px 40px rgba(20,15,0,0.10);
+
+  /* Type */
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+}
+
+/* Reset inside our artboards */
+.app, .email {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+  line-height: 1.4;
+}
+.app *, .app *::before, .app *::after,
+.email *, .email *::before, .email *::after { box-sizing: border-box; }
+.app button { font-family: inherit; font-size: inherit; color: inherit; }
+
+/* ─── Primitives ─────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 14px;
+  background: var(--accent); color: var(--accent-fg);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  font-weight: 500; font-size: 13px;
+  cursor: pointer;
+  transition: transform .08s ease, background .15s ease;
+}
+.btn:hover { transform: translateY(-0.5px); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--border-strong); }
+.btn.ghost:hover { background: var(--surface-2); }
+.btn.sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 7px; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 8px;
+  background: var(--bg-sub); color: var(--ink-2);
+  border-radius: 999px;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.num { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+
+.divider { height: 1px; background: var(--divider); border: 0; }
+
+/* Custom shapes */
+.shield {
+  width: 36px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-weight: 600; font-size: 13px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+/* Level color helpers */
+.lv-1 { color: var(--lv1); background: var(--lv1-soft); }
+.lv-2 { color: var(--lv2); background: var(--lv2-soft); }
+.lv-3 { color: var(--lv3); background: var(--lv3-soft); }
+.lv-4 { color: var(--lv4); background: var(--lv4-soft); }
+
+/* Progress */
+.bar {
+  position: relative;
+  height: 6px;
+  background: var(--bg-sub);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar > i {
+  position: absolute; inset: 0 auto 0 0;
+  background: var(--ink);
+  border-radius: 999px;
+}
+
+/* Scrollbars (only in canvas previews) */
+.scroll::-webkit-scrollbar { display: none; }
+.scroll { scrollbar-width: none; }

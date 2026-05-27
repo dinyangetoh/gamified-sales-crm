@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Rally · Gamification CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="tokens.css"/>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  html, body, #root { height:100%; margin:0; background:#f0eee9; font-family:"Geist", system-ui, sans-serif; }
+  body { overscroll-behavior: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="ui.jsx"></script>
+<script type="text/babel" src="charts.jsx"></script>
+<script type="text/babel" src="screens/login.jsx"></script>
+<script type="text/babel" src="screens/rep-dashboard.jsx"></script>
+<script type="text/babel" src="screens/rep-leaderboard.jsx"></script>
+<script type="text/babel" src="screens/rep-activities.jsx"></script>
+<script type="text/babel" src="screens/manager-dashboard.jsx"></script>
+<script type="text/babel" src="screens/manager-pages.jsx"></script>
+<script type="text/babel" src="screens/emails.jsx"></script>
+<script type="text/babel" src="screens/email-preview.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const APP_W = 1440;
+const APP_H = 920;
+const EMAIL_W = 600;
+const EMAIL_H = 780;
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="auth" title="Sign in" subtitle="Single entry point for reps and managers">
+        <DCArtboard id="login" label="Login" width={480} height={720}>
+          <LoginScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="rep" title="Sales rep" subtitle="The view a rep lands on after logging in">
+        <DCArtboard id="rep-dash" label="Dashboard" width={APP_W} height={APP_H}>
+          <RepDashboard/>
+        </DCArtboard>
+        <DCArtboard id="rep-lb" label="Leaderboard" width={APP_W} height={APP_H}>
+          <RepLeaderboard/>
+        </DCArtboard>
+        <DCArtboard id="rep-act" label="Activity" width={APP_W} height={APP_H}>
+          <RepActivities/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="manager" title="Manager" subtitle="Team-wide ops view with health, rules and roster">
+        <DCArtboard id="mgr-dash" label="Overview" width={APP_W} height={APP_H}>
+          <ManagerDashboard/>
+        </DCArtboard>
+        <DCArtboard id="mgr-lb" label="Leaderboard" width={APP_W} height={APP_H}>
+          <ManagerLeaderboard/>
+        </DCArtboard>
+        <DCArtboard id="mgr-reps" label="Reps" width={APP_W} height={APP_H}>
+          <ManagerReps/>
+        </DCArtboard>
+        <DCArtboard id="mgr-rules" label="Rules" width={APP_W} height={APP_H}>
+          <ManagerRules/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="misc" title="Email templates · Misc" subtitle="Preview every notification email per role and trigger">
+        <DCArtboard id="mgr-emails" label="Email preview · in app" width={APP_W} height={APP_H}>
+          <EmailPreviewPage selected="BADGE_UNLOCK"/>
+        </DCArtboard>
+        <DCArtboard id="mgr-emails-2" label="Email preview · manager digest" width={APP_W} height={APP_H}>
+          <EmailPreviewPage selected="WEEKLY_MGR_DIGEST"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="emails" title="Email templates — full size" subtitle="Each at native 560px email width">
+        <DCArtboard id="em-badge"   label="BADGE_UNLOCK"      width={EMAIL_W} height={EMAIL_H}><Email_BadgeUnlock/></DCArtboard>
+        <DCArtboard id="em-level"   label="LEVEL_UP"          width={EMAIL_W} height={EMAIL_H}><Email_LevelUp/></DCArtboard>
+        <DCArtboard id="em-near"    label="NEAR_BADGE"        width={EMAIL_W} height={EMAIL_H}><Email_NearBadge/></DCArtboard>
+        <DCArtboard id="em-risk"    label="STREAK_RISK"       width={EMAIL_W} height={EMAIL_H}><Email_StreakRisk/></DCArtboard>
+        <DCArtboard id="em-broken"  label="STREAK_BROKEN"     width={EMAIL_W} height={EMAIL_H}><Email_StreakBroken/></DCArtboard>
+        <DCArtboard id="em-wkly"    label="WEEKLY_REP_DIGEST" width={EMAIL_W} height={EMAIL_H}><Email_WeeklyRepDigest/></DCArtboard>
+        <DCArtboard id="em-fri"     label="END_OF_WEEK_PUSH"  width={EMAIL_W} height={EMAIL_H}><Email_EndOfWeekPush/></DCArtboard>
+        <DCArtboard id="em-top"     label="TOP_OF_WEEK_AWARD" width={EMAIL_W} height={EMAIL_H}><Email_TopOfWeek/></DCArtboard>
+        <DCArtboard id="em-mgr"     label="WEEKLY_MGR_DIGEST" width={EMAIL_W} height={EMAIL_H}><Email_WeeklyMgrDigest/></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
