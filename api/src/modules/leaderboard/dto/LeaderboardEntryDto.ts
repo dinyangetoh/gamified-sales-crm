@@ -30,6 +30,12 @@ export class LeaderboardEntryDto {
   pointsGap!: number
 
   @ApiPropertyOptional()
+  lastWeekRank?: number
+
+  @ApiPropertyOptional()
+  rankDelta?: number
+
+  @ApiPropertyOptional()
   totalPoints!: number
 
   @ApiProperty({ type: [LeaderboardBadgeDto] })

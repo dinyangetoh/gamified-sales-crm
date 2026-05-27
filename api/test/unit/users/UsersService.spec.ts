@@ -45,4 +45,40 @@ describe('UsersService', () => {
       await expect(service.findByEmail('test@test.com')).resolves.toEqual(user)
     })
   })
+
+  describe('listSalesRepSummaries', () => {
+    it('includes eventCount and lastActivityAt when provided by repository', async () => {
+      const lastActivityAt = new Date('2025-05-27T10:00:00.000Z')
+
+      usersRepo.findSalesReps.mockResolvedValue([
+        {
+          id: 'rep-1',
+          email: 'rep-1@test.com',
+          name: 'Rep One',
+          role: Role.SALES_REP,
+          passwordHash: 'x',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          stats: {
+            userId: 'rep-1',
+            totalXP: 120,
+            totalPoints: 120,
+            level: 2,
+            currentStreak: 3,
+            longestStreak: 7,
+            lastActivityDate: lastActivityAt,
+            updatedAt: new Date(),
+          },
+          badgeAwards: [{ id: 'b1', userId: 'rep-1', badgeType: 'FIRST_WIN' } as any, { id: 'b2', userId: 'rep-1', badgeType: 'HOT_STREAK' } as any],
+          eventCount: 42,
+        } as any,
+      ])
+
+      const res = await service.listSalesRepSummaries()
+      expect(res).toHaveLength(1)
+      expect(res[0].userId).toBe('rep-1')
+      expect(res[0].eventCount).toBe(42)
+      expect(res[0].lastActivityAt).toEqual(lastActivityAt)
+    })
+  })
 })

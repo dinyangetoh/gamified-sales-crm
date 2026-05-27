@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Role } from '@db'
 import { PrismaService } from '../../common/prisma/PrismaService'
+import { addWeeks, startOfISOWeek } from 'date-fns'
 
 @Injectable()
 export class UsersRepository {
@@ -83,10 +84,32 @@ export class UsersRepository {
   }
 
   findSalesReps() {
-    return this.prisma.user.findMany({
-      where: { role: Role.SALES_REP },
-      include: { stats: true, badgeAwards: true },
-      orderBy: { name: 'asc' },
+    const now = new Date()
+    const weekStart = startOfISOWeek(now)
+    const weekEnd = addWeeks(weekStart, 1)
+
+    return Promise.all([
+      this.prisma.user.findMany({
+        where: { role: Role.SALES_REP },
+        include: { stats: true, badgeAwards: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.event.groupBy({
+        by: ['userId'],
+        where: {
+          timestamp: {
+            gte: weekStart,
+            lt: weekEnd,
+          },
+        },
+        _count: { _all: true },
+      }),
+    ]).then(([users, counts]) => {
+      const eventCountByUserId = new Map(counts.map((c: any) => [c.userId, c._count._all]))
+      return users.map((u) => ({
+        ...u,
+        eventCount: eventCountByUserId.get(u.id) ?? 0,
+      }))
     })
   }
 

@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
 export class SalesRepSummaryDto {
   @ApiProperty()
@@ -24,4 +24,10 @@ export class SalesRepSummaryDto {
 
   @ApiProperty()
   badgeCount!: number
+
+  @ApiPropertyOptional()
+  eventCount?: number
+
+  @ApiPropertyOptional({ type: Date })
+  lastActivityAt?: Date | null
 }

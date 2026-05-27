@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { CACHE_ADAPTER, ICacheAdapter } from '../../common/cache/ICacheAdapter'
 import { CacheKey } from '../../common/cache/CacheKey'
 import { CACHE_TTL_LEADERBOARD } from '../scoring/constants'
-import { currentIsoWeek } from '../scoring/isoWeekUtils'
+import { currentIsoWeek, previousIsoWeek } from '../scoring/isoWeekUtils'
 import { deriveLevelLabel } from '../scoring/levelUtils'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
 import { LeaderboardRepository } from './LeaderboardRepository'
@@ -18,17 +18,24 @@ export class LeaderboardService {
 
   async getWeeklyLeaderboard(isoWeek?: string) {
     const week = isoWeek ?? currentIsoWeek()
+    const prevWeek = previousIsoWeek(week)
     const cacheKey = CacheKey.leaderboard(week)
 
     const cached = await this.cache.get(cacheKey)
     if (cached) return { ...(cached as object), fromCache: true }
 
-    const [weekStats, levels] = await Promise.all([
+    const [weekStats, prevWeekStats, levels] = await Promise.all([
       this.leaderboardRepo.findWeeklyStats(week),
+      this.leaderboardRepo.findWeeklyStats(prevWeek),
       this.scoringRepo.findLevelConfigs(),
     ])
 
+    const prevRankByUserId = new Map(prevWeekStats.map((ws, idx) => [ws.userId, idx + 1]))
+
     const entries = weekStats.map((ws, idx) => {
+      const rank = idx + 1
+      const lastWeekRank = prevRankByUserId.get(ws.userId)
+      const rankDelta = lastWeekRank !== undefined ? lastWeekRank - rank : undefined
       const above = weekStats[idx - 1]
       const pointsGap = above ? above.weekPoints - ws.weekPoints : 0
       const totalXP = ws.user.stats?.totalXP ?? 0
@@ -41,7 +48,7 @@ export class LeaderboardService {
       })
 
       return {
-        rank: idx + 1,
+        rank,
         userId: ws.userId,
         name: ws.user.name,
         weekPoints: ws.weekPoints,
@@ -50,6 +57,8 @@ export class LeaderboardService {
         levelLabel,
         currentStreak: ws.user.stats?.currentStreak ?? 0,
         pointsGap,
+        lastWeekRank,
+        rankDelta,
         badges,
       }
     })

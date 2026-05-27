@@ -36,6 +36,8 @@ export class UsersService {
       currentStreak: u.stats?.currentStreak ?? 0,
       longestStreak: u.stats?.longestStreak ?? 0,
       badgeCount: u.badgeAwards.length,
+      eventCount: (u as any).eventCount ?? 0,
+      lastActivityAt: u.stats?.lastActivityDate ?? null,
     }))
   }
 

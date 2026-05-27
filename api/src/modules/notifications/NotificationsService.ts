@@ -4,6 +4,7 @@ import { Resend } from 'resend'
 import { BadgeType } from '@db'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
 import { NotificationsRepository } from './NotificationsRepository'
+import { EMAIL_TEMPLATES, type EmailTemplateId, getEmailTemplateById } from './emailTemplates'
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -90,5 +91,89 @@ export class NotificationsService implements OnModuleInit {
       tomorrow,
     )
     return !!existing
+  }
+
+  async listNotificationLogs(params: {
+    type?: string
+    from?: Date
+    to?: Date
+    limit: number
+    offset: number
+  }) {
+    const [items, total] = await this.notificationsRepo.findNotificationLogs(params)
+    return { items, total, limit: params.limit, offset: params.offset }
+  }
+
+  async sendTestEmail(params: {
+    templateId: EmailTemplateId
+    toEmail: string
+    // The manager calling the endpoint. Used as a fallback for notification-log userId.
+    actorUserId: string
+    // Optional target user for personalization + notification-log ownership.
+    userId?: string
+    week?: string
+  }): Promise<{ accepted: boolean }> {
+    const template = getEmailTemplateById(params.templateId)
+    if (!template) return { accepted: false }
+
+    const effectiveUserId = params.userId ?? params.actorUserId
+    const user = await this.notificationsRepo.findUserById(effectiveUserId)
+    if (!user) return { accepted: false }
+
+    const from = 'gamification@yourdomain.com'
+
+    if (params.templateId === 'BADGE_UNLOCK') {
+      const badgeType = template.defaultBadgeType ?? ('CONSISTENT_CLOSER' as BadgeType)
+      const def = BADGE_DEFINITIONS.find((d) => d.type === badgeType)
+
+      await this.notificationsRepo.createNotificationLog({
+        userId: effectiveUserId,
+        type: params.templateId,
+        metadata: { badgeType, displayName: def?.displayName, toEmail: params.toEmail },
+      })
+
+      if (!this.emailEnabled || !this.resend) {
+        this.logger.debug({ toEmail: params.toEmail, templateId: params.templateId }, 'Test email skipped — no API key')
+        return { accepted: true }
+      }
+
+      await this.resend.emails.send({
+        from,
+        to: params.toEmail,
+        subject: `🏆 You earned the "${def?.displayName ?? badgeType}" badge!`,
+        html: `<p>Congratulations ${user.name}! You just unlocked the <strong>${
+          def?.displayName ?? badgeType
+        }</strong> badge.</p><p>${def?.description ?? ''}</p>`,
+      })
+
+      return { accepted: true }
+    }
+
+    if (params.templateId === 'STREAK_RISK') {
+      const streak = template.defaultStreak ?? 5
+
+      await this.notificationsRepo.createNotificationLog({
+        userId: effectiveUserId,
+        type: params.templateId,
+        metadata: { streak, toEmail: params.toEmail },
+      })
+
+      if (!this.emailEnabled || !this.resend) {
+        this.logger.debug({ toEmail: params.toEmail, templateId: params.templateId }, 'Test email skipped — no API key')
+        return { accepted: true }
+      }
+
+      await this.resend.emails.send({
+        from,
+        to: params.toEmail,
+        subject: `🔥 Your ${streak}-day streak is at risk!`,
+        html: `<p>Hi ${user.name}, log an activity today to keep your ${streak}-day streak alive!</p>`,
+      })
+
+      return { accepted: true }
+    }
+
+    // MVP templates can be previewed in the UI, but sending is not supported yet.
+    return { accepted: false }
   }
 }
