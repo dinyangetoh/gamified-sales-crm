@@ -38,23 +38,24 @@ async function cleanGamificationData(prisma: PrismaService, redis: Redis): Promi
   console.log('Cleaned gamification tables and Redis caches (dedup, leaderboard, scoring-config).')
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const events = loadAllDemoEvents()
   console.log(`Loaded ${events.length} demo events from demo/events/`)
 
   if (dryRun) {
     console.log('Dry run OK — all events validated.')
-    return
+    return 0
   }
 
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
   })
+  let redis: Redis | undefined
 
   try {
     const prisma = app.get(PrismaService)
     const scoringService = app.get(ScoringService)
-    const redis = app.get<Redis>('REDIS_CLIENT')
+    redis = app.get<Redis>('REDIS_CLIENT')
 
     if (shouldClean) {
       await cleanGamificationData(prisma, redis)
@@ -92,13 +93,24 @@ async function main(): Promise<void> {
     console.log(`  Duplicate:  ${duplicates}`)
     console.log(`  Errors:     ${errors}`)
 
-    if (errors > 0) process.exit(1)
+    return errors > 0 ? 1 : 0
   } finally {
+    if (redis) {
+      try {
+        await redis.quit()
+      } catch {
+        redis.disconnect()
+      }
+    }
     await app.close()
   }
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+main()
+  .then((code) => {
+    process.exit(code)
+  })
+  .catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
