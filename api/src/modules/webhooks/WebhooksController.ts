@@ -8,6 +8,7 @@ import { WebhookGuard } from '../../common/guards/WebhookGuard'
 import { QueueName } from '../../common/queues/QueueName'
 import { IngestionJobName } from '../../common/queues/JobName'
 import type { CrmAdapter } from './adapters/CrmAdapter.interface'
+import { WebhookAcceptedDto } from './dto/WebhookAcceptedDto'
 
 @ApiTags('webhooks')
 @Controller('webhooks')
@@ -21,7 +22,7 @@ export class WebhooksController {
   @Post(':provider')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Receive CRM webhook events' })
-  @ApiResponse({ status: 202, description: 'Events queued for processing' })
+  @ApiResponse({ status: 202, type: WebhookAcceptedDto })
   @ApiResponse({ status: 401, description: 'Invalid HMAC signature' })
   @ApiResponse({ status: 404, description: 'Unknown provider' })
   async receive(

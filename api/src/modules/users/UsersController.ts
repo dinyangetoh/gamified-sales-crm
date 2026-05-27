@@ -11,8 +11,10 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@ne
 import { Role } from '@db'
 import { UsersService } from './UsersService'
 import { CurrentUser } from '../../common/decorators/currentUser'
-import { Roles } from '../../common/decorators/roles'
 import type { JwtPayload } from '../auth/JwtStrategy'
+import { UserProfileResponseDto } from './dto/UserProfileResponseDto'
+import { TimelineResponseDto } from './dto/TimelineResponseDto'
+import { EventFeedResponseDto } from './dto/EventFeedResponseDto'
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -22,7 +24,7 @@ export class UsersController {
 
   @Get(':userId')
   @ApiOperation({ summary: 'Get user gamification profile' })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 200, type: UserProfileResponseDto })
   @ApiResponse({ status: 403 })
   @ApiResponse({ status: 404 })
   async getProfile(@Param('userId') userId: string, @CurrentUser() actor: JwtPayload) {
@@ -36,6 +38,9 @@ export class UsersController {
   @ApiOperation({ summary: 'Get award timeline for a user' })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'offset', required: false })
+  @ApiResponse({ status: 200, type: TimelineResponseDto })
+  @ApiResponse({ status: 403 })
+  @ApiResponse({ status: 404 })
   async getTimeline(
     @Param('userId') userId: string,
     @CurrentUser() actor: JwtPayload,
@@ -54,6 +59,9 @@ export class UsersController {
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'offset', required: false })
+  @ApiResponse({ status: 200, type: EventFeedResponseDto })
+  @ApiResponse({ status: 403 })
+  @ApiResponse({ status: 404 })
   async getEvents(
     @Param('userId') userId: string,
     @CurrentUser() actor: JwtPayload,

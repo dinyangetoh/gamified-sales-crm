@@ -1,19 +1,17 @@
 import { Injectable } from '@nestjs/common'
 import { BadgeType, EventType } from '@db'
-import { Prisma } from '@db'
+import type { TxClient } from '../../common/prisma/types'
 import { BADGE_DEFINITIONS } from './badgeDefinitions'
+import { BadgesRepository } from './BadgesRepository'
 
 export interface BadgeResult {
   unlocked: BadgeType[]
 }
 
-type TxClient = Omit<
-  Prisma.TransactionClient,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
->
-
 @Injectable()
 export class BadgesService {
+  constructor(private readonly badgesRepo: BadgesRepository) {}
+
   async evaluate(
     tx: TxClient,
     userId: string,
@@ -21,7 +19,7 @@ export class BadgesService {
     isoWeek: string,
     currentStreak: number,
   ): Promise<BadgeResult> {
-    const earned = await tx.badgeAward.findMany({ where: { userId } })
+    const earned = await this.badgesRepo.findBadgeAwards(tx, userId)
     const earnedSet = new Set(earned.map((b) => b.badgeType))
     const unlocked: BadgeType[] = []
 
@@ -35,21 +33,22 @@ export class BadgesService {
       if (def.type === BadgeType.HOT_STREAK) {
         if (!def.evaluate(currentStreak)) continue
 
-        const existing = await tx.badgeProgress.findFirst({
-          where: { userId, badgeType: def.type, weekKey: null },
-        })
+        const existing = await this.badgesRepo.findBadgeProgress(tx, userId, def.type, null)
         if (existing) {
-          await tx.badgeProgress.update({
-            where: { id: existing.id },
-            data: { currentCount: currentStreak },
+          await this.badgesRepo.updateBadgeProgress(tx, existing.id, {
+            currentCount: currentStreak,
           })
         } else {
-          await tx.badgeProgress.create({
-            data: { userId, badgeType: def.type, currentCount: currentStreak, targetCount: def.targetCount, weekKey: null },
+          await this.badgesRepo.createBadgeProgress(tx, {
+            userId,
+            badgeType: def.type,
+            currentCount: currentStreak,
+            targetCount: def.targetCount,
+            weekKey: null,
           })
         }
 
-        await tx.badgeAward.create({ data: { userId, badgeType: def.type } })
+        await this.badgesRepo.createBadgeAward(tx, userId, def.type)
         unlocked.push(def.type)
         continue
       }
@@ -59,30 +58,33 @@ export class BadgesService {
       let progress: { id: string; currentCount: number; isCompleted: boolean }
 
       if (weekKey !== null) {
-        progress = await tx.badgeProgress.upsert({
-          where: { userId_badgeType_weekKey: { userId, badgeType: def.type, weekKey } },
-          create: { userId, badgeType: def.type, currentCount: 1, targetCount: def.targetCount, weekKey },
-          update: { currentCount: { increment: 1 } },
-        })
+        progress = await this.badgesRepo.upsertBadgeProgress(
+          tx,
+          userId,
+          def.type,
+          weekKey,
+          def.targetCount,
+        )
       } else {
-        const existing = await tx.badgeProgress.findFirst({
-          where: { userId, badgeType: def.type, weekKey: null },
-        })
+        const existing = await this.badgesRepo.findBadgeProgress(tx, userId, def.type, null)
         if (existing) {
-          progress = await tx.badgeProgress.update({
-            where: { id: existing.id },
-            data: { currentCount: { increment: 1 } },
+          progress = await this.badgesRepo.updateBadgeProgress(tx, existing.id, {
+            currentCount: existing.currentCount + 1,
           })
         } else {
-          progress = await tx.badgeProgress.create({
-            data: { userId, badgeType: def.type, currentCount: 1, targetCount: def.targetCount, weekKey: null },
+          progress = await this.badgesRepo.createBadgeProgress(tx, {
+            userId,
+            badgeType: def.type,
+            currentCount: 1,
+            targetCount: def.targetCount,
+            weekKey: null,
           })
         }
       }
 
       if (def.evaluate(progress.currentCount)) {
-        await tx.badgeAward.create({ data: { userId, badgeType: def.type } })
-        await tx.badgeProgress.update({ where: { id: progress.id }, data: { isCompleted: true } })
+        await this.badgesRepo.createBadgeAward(tx, userId, def.type)
+        await this.badgesRepo.updateBadgeProgress(tx, progress.id, { isCompleted: true })
         unlocked.push(def.type)
       }
     }

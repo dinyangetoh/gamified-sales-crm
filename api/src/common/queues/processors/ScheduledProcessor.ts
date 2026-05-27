@@ -3,7 +3,7 @@ import { InjectQueue } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { Job, Queue } from 'bullmq'
 import { subDays, startOfDay } from 'date-fns'
-import { PrismaService } from '../../prisma/PrismaService'
+import { UsersService } from '../../../modules/users/UsersService'
 import { NotificationsService } from '../../../modules/notifications/NotificationsService'
 import { QueueName } from '../QueueName'
 import { NotificationJobName, ScheduledJobName } from '../JobName'
@@ -13,7 +13,7 @@ export class ScheduledProcessor extends WorkerHost {
   private readonly logger = new Logger(ScheduledProcessor.name)
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
     @InjectQueue(QueueName.NOTIFICATION) private readonly notificationQueue: Queue,
   ) {
@@ -34,13 +34,7 @@ export class ScheduledProcessor extends WorkerHost {
     const yesterday = subDays(startOfDay(new Date()), 1)
     const today = startOfDay(new Date())
 
-    const atRisk = await this.prisma.userStats.findMany({
-      where: {
-        lastActivityDate: { gte: yesterday, lt: today },
-        currentStreak: { gte: 2 },
-      },
-      include: { user: true },
-    })
+    const atRisk = await this.usersService.findUsersAtRisk(yesterday, today)
 
     for (const stats of atRisk) {
       const alreadySent = await this.notificationsService.hasNotificationToday(

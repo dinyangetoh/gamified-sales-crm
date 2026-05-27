@@ -5,6 +5,8 @@ import { Queue } from 'bullmq'
 import { Role } from '@db'
 import { Roles } from '../decorators/roles'
 import { QueueName } from './QueueName'
+import { FailedJobsResponseDto } from './dto/FailedJobsResponseDto'
+import { RetryJobResponseDto } from './dto/RetryJobResponseDto'
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -18,7 +20,7 @@ export class AdminController {
 
   @Get('dead-letter')
   @ApiOperation({ summary: 'List failed jobs across all queues' })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 200, type: FailedJobsResponseDto })
   async listDeadLetter() {
     const [ingestionFailed, notificationFailed] = await Promise.all([
       this.ingestionQueue.getFailed(0, 50),
@@ -47,7 +49,7 @@ export class AdminController {
   @Post('dead-letter/:jobId/retry')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Retry a specific failed job' })
-  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 200, type: RetryJobResponseDto })
   @ApiResponse({ status: 404 })
   async retryJob(@Param('jobId') jobId: string) {
     const queues = [this.ingestionQueue, this.notificationQueue]

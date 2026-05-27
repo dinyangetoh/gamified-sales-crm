@@ -8,6 +8,7 @@ import {
 import Redis from 'ioredis'
 import { Public } from '../../common/decorators/public'
 import { PrismaService } from '../prisma/PrismaService'
+import { HealthResponseDto } from './dto/HealthResponseDto'
 
 @ApiTags('health')
 @Controller('health')
@@ -23,8 +24,8 @@ export class HealthController {
   @Get()
   @HealthCheck()
   @ApiOperation({ summary: 'Liveness check — Postgres + Redis' })
-  @ApiResponse({ status: 200 })
-  @ApiResponse({ status: 503 })
+  @ApiResponse({ status: 200, type: HealthResponseDto })
+  @ApiResponse({ status: 503, type: HealthResponseDto })
   check() {
     return this.health.check([
       () => this.prismaIndicator.pingCheck('postgres', this.prisma),

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as crypto from 'crypto'
 import { EventType } from '@db'
-import { PrismaService } from '../../../common/prisma/PrismaService'
+import { UsersService } from '../../users/UsersService'
 import { CrmAdapter, CanonicalEvent, RawRequest } from './CrmAdapter.interface'
 import { WEBHOOK_TIMESTAMP_TOLERANCE_MS } from '../../scoring/constants'
 
@@ -25,7 +25,7 @@ export class GenericAdapter implements CrmAdapter {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
   ) {
     this.secret = config.get<string>('WEBHOOK_SECRET_GENERIC') as string
   }
@@ -74,8 +74,7 @@ export class GenericAdapter implements CrmAdapter {
     const userId = r.userId as string
     if (!userId) throw new NotFoundException('userId missing in webhook payload')
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } })
-    if (!user) throw new NotFoundException(`User ${userId} not found`)
+    const user = await this.usersService.findOrThrow(userId)
     return user.id
   }
 }

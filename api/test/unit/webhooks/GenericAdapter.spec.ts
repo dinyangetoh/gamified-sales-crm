@@ -1,10 +1,11 @@
 import * as crypto from 'crypto'
-import { mock, mockDeep, MockProxy, DeepMockProxy } from 'jest-mock-extended'
+import { mock, MockProxy } from 'jest-mock-extended'
 import { ConfigService } from '@nestjs/config'
 import { Test } from '@nestjs/testing'
-import { EventType } from '@prisma/client'
+import { NotFoundException } from '@nestjs/common'
+import { EventType, Role } from '@prisma/client'
 import { GenericAdapter } from '../../../src/modules/webhooks/adapters/GenericAdapter'
-import { PrismaService } from '../../../src/common/prisma/PrismaService'
+import { UsersService } from '../../../src/modules/users/UsersService'
 import { WEBHOOK_TIMESTAMP_TOLERANCE_MS } from '../../../src/modules/scoring/constants'
 
 const SECRET = 'test-webhook-secret-32-chars-xxxx'
@@ -30,18 +31,18 @@ function makeSignedRequest(body: unknown, secretOverride = SECRET, timestampOver
 
 describe('GenericAdapter', () => {
   let adapter: GenericAdapter
-  let prisma: DeepMockProxy<PrismaService>
+  let usersService: MockProxy<UsersService>
   let config: MockProxy<ConfigService>
 
   beforeEach(async () => {
-    prisma = mockDeep<PrismaService>()
+    usersService = mock<UsersService>()
     config = mock<ConfigService>()
     config.get.mockReturnValue(SECRET)
 
     const module = await Test.createTestingModule({
       providers: [
         GenericAdapter,
-        { provide: PrismaService, useValue: prisma },
+        { provide: UsersService, useValue: usersService },
         { provide: ConfigService, useValue: config },
       ],
     }).compile()
@@ -128,14 +129,22 @@ describe('GenericAdapter', () => {
 
   describe('resolveUserId', () => {
     it('returns user id when user exists', async () => {
-      const user = { id: 'user-abc', email: 'x@x.com', name: 'X', role: 'SALES_REP', passwordHash: 'x', createdAt: new Date(), updatedAt: new Date() }
-      prisma.user.findUnique.mockResolvedValue(user as never)
+      const user = {
+        id: 'user-abc',
+        email: 'x@x.com',
+        name: 'X',
+        role: Role.SALES_REP,
+        passwordHash: 'x',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      usersService.findOrThrow.mockResolvedValue(user)
       const result = await adapter.resolveUserId({ userId: 'user-abc' })
       expect(result).toBe('user-abc')
     })
 
     it('throws NotFoundException when user does not exist', async () => {
-      prisma.user.findUnique.mockResolvedValue(null)
+      usersService.findOrThrow.mockRejectedValue(new NotFoundException())
       await expect(adapter.resolveUserId({ userId: 'missing' })).rejects.toThrow()
     })
 

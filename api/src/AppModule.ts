@@ -16,7 +16,6 @@ import { LeaderboardModule } from './modules/leaderboard/LeaderboardModule'
 import { NotificationsModule } from './modules/notifications/NotificationsModule'
 import { QueuesModule } from './common/queues/QueuesModule'
 import { HealthModule } from './common/health/HealthModule'
-import { ManagerController } from './modules/leaderboard/ManagerController'
 import { AdminController } from './common/queues/AdminController'
 import { JwtAuthGuard } from './common/guards/JwtAuthGuard'
 import { RolesGuard } from './common/guards/RolesGuard'
@@ -55,7 +54,7 @@ import { LoggingInterceptor } from './common/interceptors/LoggingInterceptor'
     QueuesModule,
     HealthModule,
   ],
-  controllers: [ManagerController, AdminController],
+  controllers: [AdminController],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

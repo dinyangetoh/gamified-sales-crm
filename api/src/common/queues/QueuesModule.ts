@@ -5,6 +5,7 @@ import { IngestionProcessor } from './processors/IngestionProcessor'
 import { NotificationProcessor } from './processors/NotificationProcessor'
 import { ScheduledProcessor } from './processors/ScheduledProcessor'
 import { ScoringModule } from '../../modules/scoring/ScoringModule'
+import { UsersModule } from '../../modules/users/UsersModule'
 import { NotificationsModule } from '../../modules/notifications/NotificationsModule'
 import { GenericAdapter } from '../../modules/webhooks/adapters/GenericAdapter'
 import { HubspotAdapter } from '../../modules/webhooks/adapters/HubspotAdapter'
@@ -24,6 +25,7 @@ import { HubspotAdapter } from '../../modules/webhooks/adapters/HubspotAdapter'
     ),
     BullModule.registerFlowProducer({}),
     ScoringModule,
+    UsersModule,
     NotificationsModule,
   ],
   providers: [

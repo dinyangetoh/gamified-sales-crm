@@ -1,14 +1,15 @@
-import { mock, mockDeep, MockProxy, DeepMockProxy } from 'jest-mock-extended'
+import { mock, MockProxy } from 'jest-mock-extended'
 import { Test } from '@nestjs/testing'
 import { EventType, BadgeType, Role } from '@prisma/client'
 import { getQueueToken } from '@nestjs/bullmq'
 import { ScoringService, CreateEventInput } from '../../../src/modules/scoring/ScoringService'
-import { PrismaService } from '../../../src/common/prisma/PrismaService'
+import { ScoringRepository } from '../../../src/modules/scoring/ScoringRepository'
 import { BadgesService } from '../../../src/modules/badges/BadgesService'
 import { UsersService } from '../../../src/modules/users/UsersService'
 import { DeduplicationService } from '../../../src/common/cache/DeduplicationService'
 import { ICacheAdapter, CACHE_ADAPTER } from '../../../src/common/cache/ICacheAdapter'
 import { QueueName } from '../../../src/common/queues/QueueName'
+import type { TxClient } from '../../../src/common/prisma/types'
 
 const LEVELS = [
   { level: 1, minXP: 0, label: 'Rookie', updatedAt: new Date() },
@@ -55,7 +56,7 @@ function makeConfig() {
 
 describe('ScoringService', () => {
   let service: ScoringService
-  let prisma: DeepMockProxy<PrismaService>
+  let scoringRepo: MockProxy<ScoringRepository>
   let badgesService: MockProxy<BadgesService>
   let usersService: MockProxy<UsersService>
   let dedup: MockProxy<DeduplicationService>
@@ -70,32 +71,23 @@ describe('ScoringService', () => {
     timestamp: new Date().toISOString(),
   }
 
-  function makeTxMock(statsOverride = makeStats()) {
-    return {
-      event: { create: jest.fn().mockResolvedValue({}) },
-      userStats: { upsert: jest.fn().mockResolvedValue(statsOverride) },
-      weeklyStat: { upsert: jest.fn().mockResolvedValue({}) },
-      dailyCap: { upsert: jest.fn().mockResolvedValue({}) },
-      awardTimeline: { create: jest.fn().mockResolvedValue({}) },
-    }
-  }
-
   beforeEach(async () => {
-    prisma = mockDeep<PrismaService>()
+    scoringRepo = mock<ScoringRepository>()
     badgesService = mock<BadgesService>()
     usersService = mock<UsersService>()
     dedup = mock<DeduplicationService>()
     cache = mock<ICacheAdapter>()
     notificationQueue = { add: jest.fn().mockResolvedValue(undefined) }
 
-    const txMock = makeTxMock()
-    ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock))
-    prisma.dailyCap.findUnique.mockResolvedValue(null)
-    prisma.scoringRule.findMany.mockResolvedValue([])
-    prisma.levelConfig.findMany.mockResolvedValue(LEVELS)
-    prisma.dailyCapConfig.findMany.mockResolvedValue([
-      { id: 'c1', eventType: EventType.LEAD_CONTACTED, maxCount: 5, isActive: true, updatedAt: new Date() },
-    ])
+    scoringRepo.runTransaction.mockImplementation(async (fn: (tx: TxClient) => Promise<unknown>) =>
+      fn({} as TxClient),
+    )
+    scoringRepo.createEvent.mockResolvedValue({} as never)
+    scoringRepo.upsertUserStats.mockResolvedValue(makeStats())
+    scoringRepo.upsertWeeklyStat.mockResolvedValue({} as never)
+    scoringRepo.upsertDailyCap.mockResolvedValue({} as never)
+    scoringRepo.createTimelineEntry.mockResolvedValue({} as never)
+    scoringRepo.findDailyCap.mockResolvedValue(null)
 
     usersService.findOrThrow.mockResolvedValue(makeUser())
     usersService.getStats.mockResolvedValue(makeStats())
@@ -108,7 +100,7 @@ describe('ScoringService', () => {
     const module = await Test.createTestingModule({
       providers: [
         ScoringService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: ScoringRepository, useValue: scoringRepo },
         { provide: BadgesService, useValue: badgesService },
         { provide: UsersService, useValue: usersService },
         { provide: DeduplicationService, useValue: dedup },
@@ -132,7 +124,7 @@ describe('ScoringService', () => {
     it('does not call the transaction for duplicates', async () => {
       dedup.isProcessed.mockResolvedValue(true)
       await service.processEvent(baseInput)
-      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(scoringRepo.runTransaction).not.toHaveBeenCalled()
     })
   })
 
@@ -159,8 +151,7 @@ describe('ScoringService', () => {
 
     it('XP floor is 0 — never negative even with DEAL_LOST on 0 XP', async () => {
       usersService.getStats.mockResolvedValue(makeStats({ totalXP: 0, totalPoints: 0 }))
-      const txMock = makeTxMock(makeStats({ totalXP: 0, totalPoints: -20 }))
-      ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock))
+      scoringRepo.upsertUserStats.mockResolvedValue(makeStats({ totalXP: 0, totalPoints: -20 }))
       const result = await service.processEvent({ ...baseInput, eventType: EventType.DEAL_LOST })
       expect(result.user?.totalXP).toBeGreaterThanOrEqual(0)
     })
@@ -168,18 +159,18 @@ describe('ScoringService', () => {
 
   describe('daily cap', () => {
     it('sets capReached:true and pointsAwarded:0 when cap count is at max', async () => {
-      prisma.dailyCap.findUnique.mockResolvedValue({
+      scoringRepo.findDailyCap.mockResolvedValue({
         id: 'cap-1', userId: 'user-1', eventType: EventType.LEAD_CONTACTED, date: new Date(), count: 5,
-      })
+      } as never)
       const result = await service.processEvent({ ...baseInput, eventType: EventType.LEAD_CONTACTED })
       expect(result.capReached).toBe(true)
       expect(result.pointsAwarded).toBe(0)
     })
 
     it('does not cap if count is below limit', async () => {
-      prisma.dailyCap.findUnique.mockResolvedValue({
+      scoringRepo.findDailyCap.mockResolvedValue({
         id: 'cap-1', userId: 'user-1', eventType: EventType.LEAD_CONTACTED, date: new Date(), count: 4,
-      })
+      } as never)
       const result = await service.processEvent({ ...baseInput, eventType: EventType.LEAD_CONTACTED })
       expect(result.capReached).toBe(false)
       expect(result.pointsAwarded).toBe(10)
@@ -195,8 +186,7 @@ describe('ScoringService', () => {
   describe('level thresholds', () => {
     it('reflects level 2 when XP crosses 100', async () => {
       usersService.getStats.mockResolvedValue(makeStats({ totalXP: 90, totalPoints: 90, level: 1 }))
-      const txMock = makeTxMock(makeStats({ totalXP: 110, totalPoints: 110, level: 2 }))
-      ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock))
+      scoringRepo.upsertUserStats.mockResolvedValue(makeStats({ totalXP: 110, totalPoints: 110, level: 2 }))
       const result = await service.processEvent({ ...baseInput, eventType: EventType.MEETING_COMPLETED })
       expect(result.user?.level).toBe(2)
     })
@@ -205,8 +195,7 @@ describe('ScoringService', () => {
   describe('badge unlocks', () => {
     it('includes unlocked badges in response', async () => {
       badgesService.evaluate.mockResolvedValue({ unlocked: [BadgeType.FIRST_WIN] })
-      const txMock = makeTxMock(makeStats({ totalXP: 100, totalPoints: 100, level: 2 }))
-      ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock))
+      scoringRepo.upsertUserStats.mockResolvedValue(makeStats({ totalXP: 100, totalPoints: 100, level: 2 }))
       const result = await service.processEvent(baseInput)
       expect(result.badgesUnlocked).toHaveLength(1)
       expect(result.badgesUnlocked[0].type).toBe(BadgeType.FIRST_WIN)
@@ -214,8 +203,7 @@ describe('ScoringService', () => {
 
     it('enqueues badge unlock notification', async () => {
       badgesService.evaluate.mockResolvedValue({ unlocked: [BadgeType.FIRST_WIN] })
-      const txMock = makeTxMock(makeStats({ totalXP: 100, totalPoints: 100, level: 2 }))
-      ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock))
+      scoringRepo.upsertUserStats.mockResolvedValue(makeStats({ totalXP: 100, totalPoints: 100, level: 2 }))
       await service.processEvent(baseInput)
       expect(notificationQueue.add).toHaveBeenCalledWith(
         expect.stringContaining('BADGE_UNLOCK'),

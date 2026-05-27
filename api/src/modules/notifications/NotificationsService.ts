@@ -2,8 +2,8 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Resend } from 'resend'
 import { BadgeType } from '@db'
-import { PrismaService } from '../../common/prisma/PrismaService'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
+import { NotificationsRepository } from './NotificationsRepository'
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -13,7 +13,7 @@ export class NotificationsService implements OnModuleInit {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly prisma: PrismaService,
+    private readonly notificationsRepo: NotificationsRepository,
   ) {}
 
   onModuleInit(): void {
@@ -30,17 +30,15 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async sendBadgeUnlock(userId: string, badgeType: BadgeType): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    const user = await this.notificationsRepo.findUserById(userId)
     if (!user) return
 
     const def = BADGE_DEFINITIONS.find((d) => d.type === badgeType)
 
-    await this.prisma.notificationLog.create({
-      data: {
-        userId,
-        type: 'BADGE_UNLOCK',
-        metadata: { badgeType, displayName: def?.displayName },
-      },
+    await this.notificationsRepo.createNotificationLog({
+      userId,
+      type: 'BADGE_UNLOCK',
+      metadata: { badgeType, displayName: def?.displayName },
     })
 
     if (!this.emailEnabled || !this.resend) {
@@ -57,11 +55,13 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async sendStreakRisk(userId: string, streak: number): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    const user = await this.notificationsRepo.findUserById(userId)
     if (!user) return
 
-    await this.prisma.notificationLog.create({
-      data: { userId, type: 'STREAK_RISK', metadata: { streak } },
+    await this.notificationsRepo.createNotificationLog({
+      userId,
+      type: 'STREAK_RISK',
+      metadata: { streak },
     })
 
     if (!this.emailEnabled || !this.resend) {
@@ -83,9 +83,12 @@ export class NotificationsService implements OnModuleInit {
     const tomorrow = new Date(today)
     tomorrow.setDate(today.getDate() + 1)
 
-    const existing = await this.prisma.notificationLog.findFirst({
-      where: { userId, type, sentAt: { gte: today, lt: tomorrow } },
-    })
+    const existing = await this.notificationsRepo.findNotificationToday(
+      userId,
+      type,
+      today,
+      tomorrow,
+    )
     return !!existing
   }
 }

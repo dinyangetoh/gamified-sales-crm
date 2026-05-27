@@ -1,16 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { PrismaService } from '../../common/prisma/PrismaService'
 import { CACHE_ADAPTER, ICacheAdapter } from '../../common/cache/ICacheAdapter'
 import { CacheKey } from '../../common/cache/CacheKey'
 import { CACHE_TTL_LEADERBOARD } from '../scoring/constants'
 import { currentIsoWeek } from '../scoring/isoWeekUtils'
 import { deriveLevelLabel } from '../scoring/levelUtils'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
+import { LeaderboardRepository } from './LeaderboardRepository'
+import { ScoringRepository } from '../scoring/ScoringRepository'
 
 @Injectable()
 export class LeaderboardService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly leaderboardRepo: LeaderboardRepository,
+    private readonly scoringRepo: ScoringRepository,
     @Inject(CACHE_ADAPTER) private readonly cache: ICacheAdapter,
   ) {}
 
@@ -19,15 +21,12 @@ export class LeaderboardService {
     const cacheKey = CacheKey.leaderboard(week)
 
     const cached = await this.cache.get(cacheKey)
-    if (cached) return { ...cached as object, fromCache: true }
+    if (cached) return { ...(cached as object), fromCache: true }
 
-    const weekStats = await this.prisma.weeklyStat.findMany({
-      where: { isoWeek: week },
-      orderBy: [{ weekPoints: 'desc' }, { userId: 'asc' }],
-      include: { user: { include: { stats: true, badgeAwards: true } } },
-    })
-
-    const levels = await this.prisma.levelConfig.findMany({ orderBy: { minXP: 'asc' } })
+    const [weekStats, levels] = await Promise.all([
+      this.leaderboardRepo.findWeeklyStats(week),
+      this.scoringRepo.findLevelConfigs(),
+    ])
 
     const entries = weekStats.map((ws, idx) => {
       const above = weekStats[idx - 1]
@@ -63,14 +62,12 @@ export class LeaderboardService {
   async getAllTimeLeaderboard() {
     const cacheKey = CacheKey.leaderboardAllTime()
     const cached = await this.cache.get(cacheKey)
-    if (cached) return { ...cached as object, fromCache: true }
+    if (cached) return { ...(cached as object), fromCache: true }
 
-    const allStats = await this.prisma.userStats.findMany({
-      orderBy: [{ totalXP: 'desc' }, { userId: 'asc' }],
-      include: { user: { include: { badgeAwards: true } } },
-    })
-
-    const levels = await this.prisma.levelConfig.findMany({ orderBy: { minXP: 'asc' } })
+    const [allStats, levels] = await Promise.all([
+      this.leaderboardRepo.findAllUserStats(),
+      this.scoringRepo.findLevelConfigs(),
+    ])
 
     const entries = allStats.map((s, idx) => {
       const above = allStats[idx - 1]

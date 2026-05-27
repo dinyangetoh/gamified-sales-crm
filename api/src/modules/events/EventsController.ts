@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { Role } from '@db'
 import { ScoringService } from '../scoring/ScoringService'
 import { CreateEventDto } from './dto/CreateEventDto'
+import { ProcessEventResponseDto } from './dto/ProcessEventResponseDto'
 import { CurrentUser } from '../../common/decorators/currentUser'
 import type { JwtPayload } from '../auth/JwtStrategy'
 
@@ -14,7 +15,7 @@ export class EventsController {
 
   @Post()
   @ApiOperation({ summary: 'Ingest a CRM event and score it' })
-  @ApiResponse({ status: 200, description: 'Event processed — includes points, totals, badges' })
+  @ApiResponse({ status: 200, type: ProcessEventResponseDto })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'User not found' })

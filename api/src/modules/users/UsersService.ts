@@ -1,36 +1,49 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { User, UserStats } from '@db'
-import { PrismaService } from '../../common/prisma/PrismaService'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
+import { UsersRepository } from './UsersRepository'
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly usersRepo: UsersRepository) {}
 
   async findOrThrow(userId: string): Promise<User> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    const user = await this.usersRepo.findById(userId)
     if (!user) throw new NotFoundException(`User ${userId} not found`)
     return user
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } })
+    return this.usersRepo.findByEmail(email)
   }
 
   async getStats(userId: string): Promise<UserStats | null> {
-    return this.prisma.userStats.findUnique({ where: { userId } })
+    return this.usersRepo.findStats(userId)
+  }
+
+  async findUsersAtRisk(yesterday: Date, today: Date) {
+    return this.usersRepo.findUsersAtRisk(yesterday, today)
+  }
+
+  async listSalesRepSummaries() {
+    const users = await this.usersRepo.findSalesReps()
+    return users.map((u) => ({
+      userId: u.id,
+      name: u.name,
+      email: u.email,
+      totalXP: u.stats?.totalXP ?? 0,
+      level: u.stats?.level ?? 1,
+      currentStreak: u.stats?.currentStreak ?? 0,
+      longestStreak: u.stats?.longestStreak ?? 0,
+      badgeCount: u.badgeAwards.length,
+    }))
   }
 
   async getProfile(userId: string) {
     const user = await this.findOrThrow(userId)
-    const stats = await this.prisma.userStats.findUnique({ where: { userId } })
-    const earned = await this.prisma.badgeAward.findMany({
-      where: { userId },
-      orderBy: { awardedAt: 'asc' },
-    })
-    const inProgress = await this.prisma.badgeProgress.findMany({
-      where: { userId, isCompleted: false },
-    })
+    const stats = await this.usersRepo.findStats(userId)
+    const earned = await this.usersRepo.findBadgeAwards(userId)
+    const inProgress = await this.usersRepo.findBadgeProgressInProgress(userId)
 
     const earnedSet = new Set(earned.map((b) => b.badgeType))
     const inProgressSet = new Set(inProgress.map((b) => b.badgeType))
@@ -89,15 +102,7 @@ export class UsersService {
   }
 
   async getTimeline(userId: string, limit = 20, offset = 0) {
-    const [entries, total] = await Promise.all([
-      this.prisma.awardTimeline.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        skip: offset,
-        take: limit,
-      }),
-      this.prisma.awardTimeline.count({ where: { userId } }),
-    ])
+    const [entries, total] = await this.usersRepo.findTimeline(userId, limit, offset)
 
     const timeline = entries.map((e) => {
       const badgeDef = e.badgeType
@@ -127,40 +132,7 @@ export class UsersService {
   ) {
     const limit = params.limit ?? 50
     const offset = params.offset ?? 0
-
-    const where = {
-      userId,
-      ...(params.from || params.to
-        ? {
-            timestamp: {
-              ...(params.from ? { gte: new Date(params.from) } : {}),
-              ...(params.to ? { lte: new Date(params.to) } : {}),
-            },
-          }
-        : {}),
-    }
-
-    const [events, total] = await Promise.all([
-      this.prisma.event.findMany({
-        where,
-        orderBy: { timestamp: 'desc' },
-        skip: offset,
-        take: limit,
-        select: {
-          eventId: true,
-          userId: true,
-          provider: true,
-          eventType: true,
-          entityId: true,
-          pointsAwarded: true,
-          capReached: true,
-          timestamp: true,
-          createdAt: true,
-        },
-      }),
-      this.prisma.event.count({ where }),
-    ])
-
+    const [events, total] = await this.usersRepo.findEventFeed(userId, { ...params, limit, offset })
     return { events, total, limit, offset }
   }
 }

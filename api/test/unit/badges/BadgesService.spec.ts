@@ -1,5 +1,7 @@
+import { mock, MockProxy } from 'jest-mock-extended'
 import { BadgeType, EventType } from '@prisma/client'
 import { BadgesService } from '../../../src/modules/badges/BadgesService'
+import { BadgesRepository } from '../../../src/modules/badges/BadgesRepository'
 
 function makeTx(overrides: {
   existingAwards?: BadgeType[]
@@ -27,9 +29,37 @@ function makeTx(overrides: {
 
 describe('BadgesService', () => {
   let service: BadgesService
+  let badgesRepo: MockProxy<BadgesRepository>
 
   beforeEach(() => {
-    service = new BadgesService()
+    badgesRepo = mock<BadgesRepository>()
+    service = new BadgesService(badgesRepo)
+
+    const asTx = (tx: unknown) => tx as ReturnType<typeof makeTx>
+    badgesRepo.findBadgeAwards.mockImplementation((tx, userId) =>
+      asTx(tx).badgeAward.findMany({ where: { userId } }),
+    )
+    badgesRepo.findBadgeProgress.mockImplementation((tx, userId, badgeType, weekKey) =>
+      asTx(tx).badgeProgress.findFirst({
+        where: { userId, badgeType, weekKey },
+      }),
+    )
+    badgesRepo.updateBadgeProgress.mockImplementation((tx, id, data) =>
+      asTx(tx).badgeProgress.update({ where: { id }, data }),
+    )
+    badgesRepo.createBadgeProgress.mockImplementation((tx, data) =>
+      asTx(tx).badgeProgress.create({ data }),
+    )
+    badgesRepo.upsertBadgeProgress.mockImplementation((tx, userId, badgeType, weekKey, targetCount) =>
+      asTx(tx).badgeProgress.upsert({
+        where: { userId_badgeType_weekKey: { userId, badgeType, weekKey } },
+        create: { userId, badgeType, currentCount: 1, targetCount, weekKey },
+        update: { currentCount: { increment: 1 } },
+      }),
+    )
+    badgesRepo.createBadgeAward.mockImplementation((tx, userId, badgeType) =>
+      asTx(tx).badgeAward.create({ data: { userId, badgeType } }),
+    )
   })
 
   describe('FIRST_WIN badge (lifetime / null weekKey)', () => {

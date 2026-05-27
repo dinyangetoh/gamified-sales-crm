@@ -1,7 +1,8 @@
-import { mock, mockDeep, MockProxy, DeepMockProxy } from 'jest-mock-extended'
+import { mock, MockProxy } from 'jest-mock-extended'
 import { Test } from '@nestjs/testing'
 import { LeaderboardService } from '../../../src/modules/leaderboard/LeaderboardService'
-import { PrismaService } from '../../../src/common/prisma/PrismaService'
+import { LeaderboardRepository } from '../../../src/modules/leaderboard/LeaderboardRepository'
+import { ScoringRepository } from '../../../src/modules/scoring/ScoringRepository'
 import { ICacheAdapter, CACHE_ADAPTER } from '../../../src/common/cache/ICacheAdapter'
 
 type WeeklyResult = { week: string; entries: { weekPoints: number; rank: number; pointsGap: number; userId: string }[]; fromCache: boolean }
@@ -38,21 +39,23 @@ function makeWeeklyStat(userId: string, weekPoints: number, totalXP = 0) {
 
 describe('LeaderboardService', () => {
   let service: LeaderboardService
-  let prisma: DeepMockProxy<PrismaService>
+  let leaderboardRepo: MockProxy<LeaderboardRepository>
+  let scoringRepo: MockProxy<ScoringRepository>
   let cache: MockProxy<ICacheAdapter>
 
   beforeEach(async () => {
-    prisma = mockDeep<PrismaService>()
+    leaderboardRepo = mock<LeaderboardRepository>()
+    scoringRepo = mock<ScoringRepository>()
     cache = mock<ICacheAdapter>()
     cache.get.mockResolvedValue(null)
     cache.set.mockResolvedValue(undefined)
-
-    prisma.levelConfig.findMany.mockResolvedValue(LEVELS)
+    scoringRepo.findLevelConfigs.mockResolvedValue(LEVELS as never)
 
     const module = await Test.createTestingModule({
       providers: [
         LeaderboardService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: LeaderboardRepository, useValue: leaderboardRepo },
+        { provide: ScoringRepository, useValue: scoringRepo },
         { provide: CACHE_ADAPTER, useValue: cache },
       ],
     }).compile()
@@ -62,7 +65,7 @@ describe('LeaderboardService', () => {
 
   describe('getWeeklyLeaderboard', () => {
     it('returns entries sorted by weekPoints descending', async () => {
-      prisma.weeklyStat.findMany.mockResolvedValue([
+      leaderboardRepo.findWeeklyStats.mockResolvedValue([
         makeWeeklyStat('alice', 300),
         makeWeeklyStat('bob', 200),
         makeWeeklyStat('charlie', 100),
@@ -73,14 +76,14 @@ describe('LeaderboardService', () => {
     })
 
     it('assigns rank 1 to the top entry', async () => {
-      prisma.weeklyStat.findMany.mockResolvedValue([makeWeeklyStat('alice', 300)] as never)
+      leaderboardRepo.findWeeklyStats.mockResolvedValue([makeWeeklyStat('alice', 300)] as never)
 
       const result = await service.getWeeklyLeaderboard('2025-W21') as WeeklyResult
       expect(result.entries[0].rank).toBe(1)
     })
 
     it('rank 1 always has pointsGap of 0', async () => {
-      prisma.weeklyStat.findMany.mockResolvedValue([
+      leaderboardRepo.findWeeklyStats.mockResolvedValue([
         makeWeeklyStat('alice', 300),
         makeWeeklyStat('bob', 200),
       ] as never)
@@ -90,7 +93,7 @@ describe('LeaderboardService', () => {
     })
 
     it('computes correct pointsGap for lower ranks', async () => {
-      prisma.weeklyStat.findMany.mockResolvedValue([
+      leaderboardRepo.findWeeklyStats.mockResolvedValue([
         makeWeeklyStat('alice', 300),
         makeWeeklyStat('bob', 200),
         makeWeeklyStat('charlie', 150),
@@ -110,11 +113,11 @@ describe('LeaderboardService', () => {
     it('does not query DB on cache hit', async () => {
       cache.get.mockResolvedValue({ week: '2025-W21', generatedAt: new Date(), entries: [], fromCache: false })
       await service.getWeeklyLeaderboard('2025-W21')
-      expect(prisma.weeklyStat.findMany).not.toHaveBeenCalled()
+      expect(leaderboardRepo.findWeeklyStats).not.toHaveBeenCalled()
     })
 
     it('writes to cache after DB query', async () => {
-      prisma.weeklyStat.findMany.mockResolvedValue([makeWeeklyStat('alice', 300)] as never)
+      leaderboardRepo.findWeeklyStats.mockResolvedValue([makeWeeklyStat('alice', 300)] as never)
 
       await service.getWeeklyLeaderboard('2025-W21')
       expect(cache.set).toHaveBeenCalled()
@@ -148,7 +151,7 @@ describe('LeaderboardService', () => {
     }
 
     it('sorts by totalXP descending', async () => {
-      prisma.userStats.findMany.mockResolvedValue([
+      leaderboardRepo.findAllUserStats.mockResolvedValue([
         makeUserStat('alice', 500),
         makeUserStat('bob', 300),
         makeUserStat('charlie', 100),
@@ -159,7 +162,7 @@ describe('LeaderboardService', () => {
     })
 
     it('rank 1 has pointsGap 0, rank 2 shows correct gap', async () => {
-      prisma.userStats.findMany.mockResolvedValue([
+      leaderboardRepo.findAllUserStats.mockResolvedValue([
         makeUserStat('alice', 500),
         makeUserStat('bob', 300),
       ] as never)

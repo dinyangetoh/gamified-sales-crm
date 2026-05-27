@@ -1,11 +1,7 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { EventType, TimelineEventType } from '@db'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
-import * as fs from 'fs'
-import * as path from 'path'
-import { PrismaService } from '../../common/prisma/PrismaService'
 import { BadgesService } from '../badges/BadgesService'
 import { UsersService } from '../users/UsersService'
 import { DeduplicationService } from '../../common/cache/DeduplicationService'
@@ -14,14 +10,12 @@ import { CacheKey } from '../../common/cache/CacheKey'
 import { deriveLevel, deriveLevelLabel } from './levelUtils'
 import { computeStreakUpdate } from './streakUtils'
 import { getIsoWeek } from './isoWeekUtils'
-import {
-  STREAK_MILESTONES,
-  CACHE_TTL_SCORING_CONFIG,
-} from './constants'
+import { STREAK_MILESTONES, CACHE_TTL_SCORING_CONFIG } from './constants'
 import { QueueName } from '../../common/queues/QueueName'
 import { NotificationJobName } from '../../common/queues/JobName'
-import { scoringConfigSchema, ScoringConfig } from '../../common/config/scoringConfig.schema'
+import { ScoringConfig } from '../../common/config/scoringConfig.schema'
 import { BadgeType } from '@db'
+import { ScoringRepository } from './ScoringRepository'
 
 export interface CreateEventInput {
   eventId: string
@@ -56,7 +50,7 @@ export class ScoringService {
   private readonly logger = new Logger(ScoringService.name)
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly scoringRepo: ScoringRepository,
     private readonly badgesService: BadgesService,
     private readonly usersService: UsersService,
     private readonly dedup: DeduplicationService,
@@ -65,7 +59,7 @@ export class ScoringService {
   ) {}
 
   async processEvent(input: CreateEventInput): Promise<EventResult> {
-    const user = await this.usersService.findOrThrow(input.userId)
+    await this.usersService.findOrThrow(input.userId)
     const provider = input.provider ?? 'generic'
     const timestamp = new Date(input.timestamp)
 
@@ -92,9 +86,11 @@ export class ScoringService {
     const capConfig = rules.dailyCaps[input.eventType]
 
     if (capConfig?.isActive) {
-      const capRow = await this.prisma.dailyCap.findUnique({
-        where: { userId_eventType_date: { userId: input.userId, eventType: input.eventType, date: today } },
-      })
+      const capRow = await this.scoringRepo.findDailyCap(
+        input.userId,
+        input.eventType,
+        today,
+      )
       if (capRow && capRow.count >= capConfig.maxCount) {
         capReached = true
       }
@@ -111,43 +107,41 @@ export class ScoringService {
     const newLevelLabel = deriveLevelLabel(newXP, rules.levels)
     const levelUp = newLevel > (currentStats?.level ?? 1)
 
-    const streakUpdate = pointsAwarded !== 0
-      ? computeStreakUpdate(
-          currentStats
-            ? {
-                currentStreak: currentStats.currentStreak,
-                longestStreak: currentStats.longestStreak,
-                lastActivityDate: currentStats.lastActivityDate,
-              }
-            : null,
-          timestamp,
-        )
-      : null
+    const streakUpdate =
+      pointsAwarded !== 0
+        ? computeStreakUpdate(
+            currentStats
+              ? {
+                  currentStreak: currentStats.currentStreak,
+                  longestStreak: currentStats.longestStreak,
+                  lastActivityDate: currentStats.lastActivityDate,
+                }
+              : null,
+            timestamp,
+          )
+        : null
 
     const newStreak = streakUpdate?.currentStreak ?? currentStats?.currentStreak ?? 0
-    const newLongestStreak = streakUpdate?.longestStreak ?? currentStats?.longestStreak ?? 0
     const isoWeek = getIsoWeek(timestamp)
 
-    const { stats, badgeResult } = await this.prisma.$transaction(async (tx) => {
-      await tx.event.create({
-        data: {
-          eventId: input.eventId,
-          userId: input.userId,
-          provider,
-          eventType: input.eventType,
-          entityId: input.entityId,
-          rawPayload: (input.metadata ?? {}) as object,
-          pointsAwarded,
-          capReached,
-          timestamp,
-          processedAt: new Date(),
-        },
+    const { stats, badgeResult } = await this.scoringRepo.runTransaction(async (tx) => {
+      await this.scoringRepo.createEvent(tx, {
+        eventId: input.eventId,
+        userId: input.userId,
+        provider,
+        eventType: input.eventType,
+        entityId: input.entityId,
+        rawPayload: (input.metadata ?? {}) as object,
+        pointsAwarded,
+        capReached,
+        timestamp,
+        processedAt: new Date(),
       })
 
-      const statsData = await tx.userStats.upsert({
-        where: { userId: input.userId },
-        create: {
-          userId: input.userId,
+      const statsData = await this.scoringRepo.upsertUserStats(
+        tx,
+        input.userId,
+        {
           totalXP: newXP,
           totalPoints: newPoints,
           level: newLevel,
@@ -155,7 +149,7 @@ export class ScoringService {
           longestStreak: streakUpdate?.longestStreak ?? 0,
           lastActivityDate: streakUpdate?.lastActivityDate ?? null,
         },
-        update: {
+        {
           totalXP: newXP,
           totalPoints: newPoints,
           level: newLevel,
@@ -167,21 +161,13 @@ export class ScoringService {
               }
             : {}),
         },
-      })
+      )
 
       if (pointsAwarded !== 0) {
-        await tx.weeklyStat.upsert({
-          where: { userId_isoWeek: { userId: input.userId, isoWeek } },
-          create: { userId: input.userId, isoWeek, weekPoints: pointsAwarded },
-          update: { weekPoints: { increment: pointsAwarded } },
-        })
+        await this.scoringRepo.upsertWeeklyStat(tx, input.userId, isoWeek, pointsAwarded)
       }
 
-      await tx.dailyCap.upsert({
-        where: { userId_eventType_date: { userId: input.userId, eventType: input.eventType, date: today } },
-        create: { userId: input.userId, eventType: input.eventType, date: today, count: 1 },
-        update: { count: { increment: 1 } },
-      })
+      await this.scoringRepo.upsertDailyCap(tx, input.userId, input.eventType, today)
 
       const badgeRes = await this.badgesService.evaluate(
         tx,
@@ -192,43 +178,40 @@ export class ScoringService {
       )
 
       for (const badge of badgeRes.unlocked) {
-        await tx.awardTimeline.create({
-          data: {
-            userId: input.userId,
-            type: TimelineEventType.BADGE_EARNED,
-            badgeType: badge,
-            eventId: input.eventId,
-            pointsSnapshot: newPoints,
-            xpSnapshot: newXP,
-            levelSnapshot: newLevel,
-            weekKey: isoWeek,
-          },
+        await this.scoringRepo.createTimelineEntry(tx, {
+          userId: input.userId,
+          type: TimelineEventType.BADGE_EARNED,
+          badgeType: badge,
+          eventId: input.eventId,
+          pointsSnapshot: newPoints,
+          xpSnapshot: newXP,
+          levelSnapshot: newLevel,
+          weekKey: isoWeek,
         })
       }
 
       if (levelUp) {
-        await tx.awardTimeline.create({
-          data: {
-            userId: input.userId,
-            type: TimelineEventType.LEVEL_UP,
-            pointsSnapshot: newPoints,
-            xpSnapshot: newXP,
-            levelSnapshot: newLevel,
-            metadata: { from: currentStats?.level ?? 1, to: newLevel },
-          },
+        await this.scoringRepo.createTimelineEntry(tx, {
+          userId: input.userId,
+          type: TimelineEventType.LEVEL_UP,
+          pointsSnapshot: newPoints,
+          xpSnapshot: newXP,
+          levelSnapshot: newLevel,
+          metadata: { from: currentStats?.level ?? 1, to: newLevel },
         })
       }
 
-      if (streakUpdate && STREAK_MILESTONES.includes(newStreak as typeof STREAK_MILESTONES[number])) {
-        await tx.awardTimeline.create({
-          data: {
-            userId: input.userId,
-            type: TimelineEventType.STREAK_MILESTONE,
-            pointsSnapshot: newPoints,
-            xpSnapshot: newXP,
-            levelSnapshot: newLevel,
-            metadata: { streak: newStreak },
-          },
+      if (
+        streakUpdate &&
+        STREAK_MILESTONES.includes(newStreak as (typeof STREAK_MILESTONES)[number])
+      ) {
+        await this.scoringRepo.createTimelineEntry(tx, {
+          userId: input.userId,
+          type: TimelineEventType.STREAK_MILESTONE,
+          pointsSnapshot: newPoints,
+          xpSnapshot: newXP,
+          levelSnapshot: newLevel,
+          metadata: { streak: newStreak },
         })
       }
 
@@ -287,9 +270,9 @@ export class ScoringService {
     if (cached) return cached
 
     const [scoringRules, levelConfigs, capConfigs] = await Promise.all([
-      this.prisma.scoringRule.findMany({ where: { isActive: true } }),
-      this.prisma.levelConfig.findMany({ orderBy: { minXP: 'asc' } }),
-      this.prisma.dailyCapConfig.findMany({ where: { isActive: true } }),
+      this.scoringRepo.findScoringRules(),
+      this.scoringRepo.findLevelConfigs(),
+      this.scoringRepo.findDailyCapConfigs(),
     ])
 
     const config: ScoringConfig = {
