@@ -17,7 +17,7 @@ export default function AuthGate({
   const [ready, setReady] = useState(false)
 
   const redirectPath = useMemo(() => {
-    return requiredRole === 'MANAGER' ? '/manager/dashboard' : '/dashboard'
+    return requiredRole === 'MANAGER' ? '/admin/dashboard' : '/dashboard'
   }, [requiredRole])
 
   useEffect(() => {

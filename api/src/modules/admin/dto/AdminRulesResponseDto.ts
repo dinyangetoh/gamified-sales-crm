@@ -34,7 +34,7 @@ export class DailyCapRuleDto {
   updatedAt!: Date
 }
 
-export class LevelConfigDto {
+export class AdminLevelConfigDto {
   @ApiProperty()
   level!: number
 
@@ -65,15 +65,15 @@ export class BadgeDefinitionDto {
   windowType!: string
 }
 
-export class ManagerRulesResponseDto {
+export class AdminRulesResponseDto {
   @ApiProperty({ type: [ScoringRuleDto] })
   scoringRules!: ScoringRuleDto[]
 
   @ApiProperty({ type: [DailyCapRuleDto] })
   dailyCapRules!: DailyCapRuleDto[]
 
-  @ApiProperty({ type: [LevelConfigDto] })
-  levelConfig!: LevelConfigDto[]
+  @ApiProperty({ type: [AdminLevelConfigDto] })
+  levelConfig!: AdminLevelConfigDto[]
 
   @ApiProperty({ type: [BadgeDefinitionDto] })
   badges!: BadgeDefinitionDto[]

@@ -7,7 +7,7 @@ import { clearAccessToken, getAccessToken } from '@/lib/api/tokenStorage'
 import type { JwtRole } from '@/lib/api/jwt'
 
 function roleToPath(role: JwtRole): string {
-  if (role === 'MANAGER') return '/manager/dashboard'
+  if (role === 'MANAGER') return '/admin/dashboard'
   return '/dashboard'
 }
 

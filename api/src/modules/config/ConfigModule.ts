@@ -7,6 +7,7 @@ import { ConfigService } from './ConfigService'
   imports: [ScoringModule],
   providers: [ConfigService],
   controllers: [ConfigController],
+  exports: [ConfigService],
 })
 export class ConfigModule {}
 

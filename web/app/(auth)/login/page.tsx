@@ -18,7 +18,7 @@ const DEMO_ACCOUNTS = [
 ]
 
 function roleToPath(role: JwtRole) {
-  if (role === 'MANAGER') return '/manager/dashboard'
+  if (role === 'MANAGER') return '/admin/dashboard'
   return '/dashboard'
 }
 

@@ -5,15 +5,15 @@ import { Roles } from '../../common/decorators/roles'
 import { NotificationsService } from '../notifications/NotificationsService'
 import { NotificationLogResponseDto } from './dto/NotificationLogResponseDto'
 
-@ApiTags('manager')
+@ApiTags('admin')
 @ApiBearerAuth()
 @Roles(Role.MANAGER)
-@Controller('manager')
-export class ManagerNotificationsController {
+@Controller('admin')
+export class AdminNotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get('notifications')
-  @ApiOperation({ summary: 'Manager: notification send history with optional filtering' })
+  @ApiOperation({ summary: 'Admin: notification send history with optional filtering' })
   @ApiQuery({ name: 'type', required: false, description: 'Notification type (e.g. BADGE_UNLOCK)' })
   @ApiQuery({ name: 'from', required: false, description: 'ISO date (inclusive)' })
   @ApiQuery({ name: 'to', required: false, description: 'ISO date (inclusive)' })
@@ -48,4 +48,3 @@ export class ManagerNotificationsController {
     } as NotificationLogResponseDto
   }
 }
-

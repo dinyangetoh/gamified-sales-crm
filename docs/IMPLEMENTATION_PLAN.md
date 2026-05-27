@@ -484,7 +484,7 @@ violation) which is caught and returns the correct duplicate response.
 are index scans on `(isoWeek, weekPoints)`. No aggregation at query time.
 
 **`ScoringRule` / `LevelConfig` / `DailyCapConfig` DB-driven** — seeded from
-`scoring-config.json` on first run. Managers view current rules via `/manager/rules`.
+`scoring-config.json` on first run. Managers view current rules via `/admin/rules`.
 Edit endpoints are MVP scope.
 
 **`BadgeProgress.targetCount` denormalised** — `currentCount / targetCount * 100` gives
@@ -671,10 +671,7 @@ scheduled-queue  (BullMQ cron)
 
 ### Dead-Letter Queue
 
-Jobs exhausting all retries land here with full error context.
-- `GET /admin/dead-letter` — list failed jobs (MANAGER role)
-- `POST /admin/dead-letter/:jobId/retry` — manual replay (MANAGER role)
-- Manager dashboard surfaces DLQ depth as ops health indicator
+Jobs exhausting all retries land in BullMQ failed sets with full error context (internal ops only; no HTTP list/retry API in POC).
 
 ### Startup Warning — Resend
 
@@ -1384,9 +1381,9 @@ enum Role {
 | `GET /leaderboard` | ✅ | ✅ |
 | `GET /leaderboard/all-time` | ✅ | ✅ |
 | `GET /events` (audit log) | ✅ own only | ✅ all with filters |
-| `GET /manager/rules` | ❌ 403 | ✅ |
-| `GET /admin/dead-letter` | ❌ 403 | ✅ |
-| `POST /admin/dead-letter/:id/retry` | ❌ 403 | ✅ |
+| `GET /admin/rules` | ❌ 403 | ✅ |
+| `GET /admin/overview` | ❌ 403 | ✅ |
+| `GET /admin/reps` | ❌ 403 | ✅ |
 | `POST /webhooks/:provider` | public (HMAC-guarded) | public (HMAC-guarded) |
 
 ### Webhook Security
@@ -1591,10 +1588,10 @@ Response 200:
 }
 ```
 
-### GET /manager/rules
+### GET /admin/rules
 
 ```
-GET /manager/rules
+GET /admin/rules
 Authorization: Bearer <manager-token>
 
 Response 200:
@@ -1648,7 +1645,7 @@ Response 200:
 Single form, email + password, NextAuth credentials provider → NestJS JWT.
 Redirect to role-appropriate dashboard on success:
 - `SALES_REP` → `/dashboard`
-- `MANAGER` → `/manager/dashboard`
+- `MANAGER` → `/admin/dashboard`
 
 ### Sales Rep — `/dashboard`
 
@@ -1689,27 +1686,26 @@ Redirect to role-appropriate dashboard on success:
 - `pointsGap` column — "60 pts behind"
 - Click any rep row → rep profile modal
 
-### Manager — `/manager/dashboard`
+### Manager — `/admin/dashboard`
 
 - This week's top 3 — visual podium cards with badge chips
 - Most improved rep — week-over-week delta
 - Reps with zero activity this week — at-risk list
-- Dead-letter ops panel — failed job count, link to detail
 - Quick links to leaderboard, rules, rep roster
 
-### Manager — `/manager/leaderboard`
+### Manager — `/admin/leaderboard`
 
 - Week selector + "All Time" tab
 - Same table as rep view plus activity count column
 - Click any rep → full rep profile
 - Week-over-week toggle
 
-### Manager — `/manager/reps`
+### Manager — `/admin/reps`
 
 - Table: name, level label, totalXP, currentStreak, weekPoints, badge count
 - Click → rep profile: full stats, timeline, badge progress, event history
 
-### Manager — `/manager/rules`
+### Manager — `/admin/rules`
 
 - Scoring rules table: event type, points, active toggle (view only in POC)
 - Daily cap rules: event type, max count, active (view only)
@@ -1840,7 +1836,7 @@ the test descriptions without reading the implementation.
 - `GET /leaderboard?week=` — current week, past week, empty week, invalid format
 - `GET /leaderboard/all-time` — correct sort by totalXP
 - `GET /users/:userId` — own profile (SALES_REP), other rep (MANAGER), other rep (SALES_REP → 403)
-- `GET /manager/rules` — MANAGER gets rules, SALES_REP gets 403
+- `GET /admin/rules` — MANAGER gets rules, SALES_REP gets 403
 - `GET /health` — both services healthy
 
 ---
@@ -2055,7 +2051,7 @@ demo parity, not used at runtime in POC.
 **Alternative:** DB-only at runtime from day one.
 
 **Tradeoff:** Spec-exact defaults without a deploy; clear migration path to editable rules
-via `PATCH /manager/rules` + `DbScoringConfigRepository` + `ScoringConfigService.invalidate()`.
+via `PATCH /admin/rules` + `DbScoringConfigRepository` + `ScoringConfigService.invalidate()`.
 
 ---
 
@@ -2280,8 +2276,8 @@ without profiling data.
 
 | Item | What it unlocks |
 |---|---|
-| `PUT /manager/rules/scoring/:eventType` | Managers edit point values at runtime |
-| `PUT /manager/rules/caps/:eventType` | Managers adjust daily caps |
+| `PUT /admin/rules/scoring/:eventType` | Managers edit point values at runtime |
+| `PUT /admin/rules/caps/:eventType` | Managers adjust daily caps |
 | Pipedrive adapter — full implementation | `meta.user_id` direct, straightforward |
 | HubSpot `resolveUserId` — live | Requires HubSpot API credentials + CrmUserMap |
 | Level-up notification | Rep notified when they advance a level |
@@ -2309,5 +2305,5 @@ without profiling data.
 | WebSocket live updates | Real-time leaderboard + score events |
 | Prometheus + Grafana | Full metrics and dashboards |
 | OpenTelemetry tracing | End-to-end distributed traces |
-| Leaderboard export CSV | `GET /manager/leaderboard/export` |
+| Leaderboard export CSV | `GET /admin/leaderboard/export` |
 | Feature flag system | Safe rollout of rule changes |

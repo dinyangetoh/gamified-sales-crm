@@ -33,7 +33,7 @@ export default function ManagerRulesPage() {
     async function load() {
       setErr(null)
       try {
-        const res = await apiFetch<ManagerRulesResponse>('/manager/rules')
+        const res = await apiFetch<ManagerRulesResponse>('/admin/rules')
         if (cancelled) return
         setData(res)
       } catch (e) {

@@ -122,7 +122,7 @@ export default function ManagerAnalyticsDashboard({
           title="Top performers"
           subtitle={weekLabel}
           action={
-            <Link href="/manager/leaderboard" style={{ fontSize: 11, color: 'var(--muted)', textDecoration: 'none' }}>
+            <Link href="/admin/leaderboard" style={{ fontSize: 11, color: 'var(--muted)', textDecoration: 'none' }}>
               Leaderboard →
             </Link>
           }

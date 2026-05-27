@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { LeaderboardBadgeDto } from '../../leaderboard/dto/LeaderboardBadgeDto'
 
-export class ManagerOverviewRepDto {
+export class AdminOverviewRepDto {
   @ApiProperty()
   userId!: string
 
@@ -24,7 +24,7 @@ export class ManagerOverviewRepDto {
   badges!: LeaderboardBadgeDto[]
 }
 
-export class ManagerOverviewAtRiskItemDto {
+export class AdminOverviewAtRiskItemDto {
   @ApiProperty()
   userId!: string
 
@@ -35,17 +35,13 @@ export class ManagerOverviewAtRiskItemDto {
   reason?: string
 }
 
-export class ManagerOverviewResponseDto {
-  @ApiProperty({ type: [ManagerOverviewRepDto] })
-  top3!: ManagerOverviewRepDto[]
+export class AdminOverviewResponseDto {
+  @ApiProperty({ type: [AdminOverviewRepDto] })
+  top3!: AdminOverviewRepDto[]
 
-  @ApiProperty({ type: [ManagerOverviewAtRiskItemDto] })
-  atRisk!: ManagerOverviewAtRiskItemDto[]
+  @ApiProperty({ type: [AdminOverviewAtRiskItemDto] })
+  atRisk!: AdminOverviewAtRiskItemDto[]
 
   @ApiPropertyOptional()
   kpis?: Record<string, unknown>
-
-  @ApiPropertyOptional()
-  dlq?: Record<string, unknown>
 }
-

@@ -16,12 +16,11 @@ import { LeaderboardModule } from './modules/leaderboard/LeaderboardModule'
 import { NotificationsModule } from './modules/notifications/NotificationsModule'
 import { QueuesModule } from './common/queues/QueuesModule'
 import { HealthModule } from './common/health/HealthModule'
-import { AdminController } from './common/queues/AdminController'
 import { JwtAuthGuard } from './common/guards/JwtAuthGuard'
 import { RolesGuard } from './common/guards/RolesGuard'
 import { GlobalExceptionFilter } from './common/filters/GlobalExceptionFilter'
 import { LoggingInterceptor } from './common/interceptors/LoggingInterceptor'
-import { ManagerModule } from './modules/manager/ManagerModule'
+import { AdminModule } from './modules/admin/AdminModule'
 import { ConfigModule as RallyConfigModule } from './modules/config/ConfigModule'
 
 @Module({
@@ -55,10 +54,9 @@ import { ConfigModule as RallyConfigModule } from './modules/config/ConfigModule
     NotificationsModule,
     QueuesModule,
     HealthModule,
-    ManagerModule,
+    AdminModule,
     RallyConfigModule,
   ],
-  controllers: [AdminController],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

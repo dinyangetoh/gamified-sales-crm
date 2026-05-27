@@ -37,7 +37,7 @@ export default function ManagerRepsPage() {
     async function load() {
       setErr(null)
       try {
-        const res = await apiFetch<SalesRepSummary[]>('/manager/reps')
+        const res = await apiFetch<SalesRepSummary[]>('/admin/reps')
         if (cancelled) return
         setData(res)
       } catch (e) {

@@ -78,7 +78,7 @@ export default function EmailDemoCard({ templates }: { templates: TemplateItem[]
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <Button variant="solid" size="sm" onClick={() => (window.location.href = '/manager/emails')}>
+        <Button variant="solid" size="sm" onClick={() => (window.location.href = '/admin/emails')}>
           View all templates
         </Button>
       </div>

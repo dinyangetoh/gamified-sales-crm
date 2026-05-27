@@ -10,15 +10,15 @@ import { EMAIL_TEMPLATES, getEmailTemplateById, type EmailTemplateId } from '../
 import { EmailTemplateRegistryItemDto } from './dto/EmailTemplateRegistryItemDto'
 import { SendTestEmailDto, SendTestEmailResponseDto } from './dto/SendTestEmailDto'
 
-@ApiTags('manager')
+@ApiTags('admin')
 @ApiBearerAuth()
 @Roles(Role.MANAGER)
-@Controller('manager')
-export class ManagerEmailsController {
+@Controller('admin')
+export class AdminEmailsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get('emails/templates')
-  @ApiOperation({ summary: 'Manager: email template registry metadata' })
+  @ApiOperation({ summary: 'Admin: email template registry metadata' })
   @ApiResponse({ status: 200, type: EmailTemplateRegistryItemDto, isArray: true })
   async listTemplates(): Promise<EmailTemplateRegistryItemDto[]> {
     return EMAIL_TEMPLATES.map((t) => ({
@@ -34,7 +34,7 @@ export class ManagerEmailsController {
   }
 
   @Post('emails/:templateId/send-test')
-  @ApiOperation({ summary: 'Manager: send test email for a template (POC templates supported)' })
+  @ApiOperation({ summary: 'Admin: send test email for a template (POC templates supported)' })
   @ApiParam({ name: 'templateId', type: String })
   @ApiResponse({ status: 200, type: SendTestEmailResponseDto })
   @ApiResponse({ status: 400 })
@@ -55,4 +55,3 @@ export class ManagerEmailsController {
     })
   }
 }
-

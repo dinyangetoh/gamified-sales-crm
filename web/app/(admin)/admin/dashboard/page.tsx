@@ -25,7 +25,6 @@ type ManagerOverviewResponse = {
   }>
   atRisk?: Array<{ userId: string; name: string; reason?: string }>
   kpis?: Record<string, unknown>
-  dlq?: Record<string, unknown>
 }
 
 type SalesRepSummary = {
@@ -71,10 +70,10 @@ export default function ManagerDashboardPage() {
       setErr(null)
       try {
         const [o, r, lb, t] = await Promise.all([
-          apiFetch<ManagerOverviewResponse>(`/manager/overview?week=${encodeURIComponent(week)}`),
-          apiFetch<SalesRepSummary[]>('/manager/reps'),
+          apiFetch<ManagerOverviewResponse>(`/admin/overview?week=${encodeURIComponent(week)}`),
+          apiFetch<SalesRepSummary[]>('/admin/reps'),
           apiFetch<WeeklyLeaderboardResponse>(`/leaderboard?week=${encodeURIComponent(week)}`),
-          apiFetch<EmailTemplateRegistryItem[]>('/manager/emails/templates'),
+          apiFetch<EmailTemplateRegistryItem[]>('/admin/emails/templates'),
         ])
         if (cancelled) return
         setOverview(o)

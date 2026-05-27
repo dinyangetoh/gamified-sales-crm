@@ -19,12 +19,12 @@ const repNav = [
 ]
 
 const managerNav = [
-  { id: 'dashboard', label: 'Overview', href: '/manager/dashboard', icon: Icon.dashboard },
-  { id: 'leaderboard', label: 'Leaderboard', href: '/manager/leaderboard', icon: Icon.trophy },
-  { id: 'reps', label: 'Reps', href: '/manager/reps', icon: Icon.people },
-  { id: 'simulator', label: 'Simulator', href: '/manager/simulator', icon: Icon.bolt },
-  { id: 'rules', label: 'Rules', href: '/manager/rules', icon: Icon.rules },
-  { id: 'emails', label: 'Email Templates', href: '/manager/emails', icon: Icon.mail },
+  { id: 'dashboard', label: 'Overview', href: '/admin/dashboard', icon: Icon.dashboard },
+  { id: 'leaderboard', label: 'Leaderboard', href: '/admin/leaderboard', icon: Icon.trophy },
+  { id: 'reps', label: 'Reps', href: '/admin/reps', icon: Icon.people },
+  { id: 'simulator', label: 'Simulator', href: '/admin/simulator', icon: Icon.bolt },
+  { id: 'rules', label: 'Rules', href: '/admin/rules', icon: Icon.rules },
+  { id: 'emails', label: 'Email Templates', href: '/admin/emails', icon: Icon.mail },
 ]
 
 function initialsFromEmail(email: string) {

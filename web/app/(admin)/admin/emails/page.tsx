@@ -54,7 +54,7 @@ export default function ManagerEmailsPage() {
     async function load() {
       setErr(null)
       try {
-        const res = await apiFetch<EmailTemplateRegistryItem[]>('/manager/emails/templates')
+        const res = await apiFetch<EmailTemplateRegistryItem[]>('/admin/emails/templates')
         if (cancelled) return
         setItems(res)
       } catch (e) {
@@ -73,7 +73,7 @@ export default function ManagerEmailsPage() {
     setSending(true)
     setMessage(null)
     try {
-      const res = await apiFetch<SendTestResponse>(`/manager/emails/${templateId}/send-test`, {
+      const res = await apiFetch<SendTestResponse>(`/admin/emails/${templateId}/send-test`, {
         method: 'POST',
         body: { toEmail, userId: actorId },
       })

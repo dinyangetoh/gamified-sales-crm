@@ -21,7 +21,7 @@ export default function ManagerSimulatorPage() {
     async function load() {
       setErr(null)
       try {
-        const res = await apiFetch<SalesRepSummary[]>('/manager/reps')
+        const res = await apiFetch<SalesRepSummary[]>('/admin/reps')
         if (cancelled) return
         setReps(res)
       } catch (e) {
