@@ -130,6 +130,11 @@ if [ ! -d "$SCRIPT_DIR/web/node_modules" ]; then
 fi
 ok "web/ dependencies ready"
 
+# ── Prisma client generation (required for TS types/models) ───────────────────
+log "Generating Prisma client..."
+(cd "$SCRIPT_DIR/api" && npx prisma generate)
+ok "Prisma client generated"
+
 # ── Seed (--seed or --reset) ──────────────────────────────────────────────────
 if [ "$SEED" = true ] || [ "$RESET_DATA" = true ]; then
   log "Running database migrations..."
