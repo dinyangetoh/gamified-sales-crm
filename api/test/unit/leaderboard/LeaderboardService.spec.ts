@@ -128,17 +128,13 @@ describe('LeaderboardService', () => {
       expect(cache.set).toHaveBeenCalled()
     })
 
-    it('falls back to repository data and warns on cache read failure', async () => {
-      const loggerSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation()
+    it('throws InternalServerErrorException and logs on cache read failure', async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation()
       cache.get.mockRejectedValue(new Error('cache down'))
-      leaderboardRepo.findWeeklyStats.mockResolvedValue([
-        makeWeeklyStat('alice', 300),
-        makeWeeklyStat('bob', 200),
-      ] as never)
 
-      const result = await service.getWeeklyLeaderboard('2025-W21')
-      expect(result.entries).toHaveLength(2)
-      expect(leaderboardRepo.findWeeklyStats).toHaveBeenCalled()
+      await expect(service.getWeeklyLeaderboard('2025-W21')).rejects.toBeInstanceOf(
+        InternalServerErrorException,
+      )
       expect(loggerSpy).toHaveBeenCalled()
       loggerSpy.mockRestore()
     })

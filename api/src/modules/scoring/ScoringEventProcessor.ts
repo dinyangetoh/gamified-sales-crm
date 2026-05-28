@@ -55,31 +55,9 @@ export class ScoringEventProcessor {
       const ctx = await this.prepareEventContext(input, provider, timestamp)
       const { stats, badgeResult } = await this.persistScoredEvent(ctx)
 
-      await this.invalidateLeaderboardCache(ctx.isoWeek).catch((error) => {
-        this.logger.warn(
-          {
-            service: ScoringEventProcessor.name,
-            method: 'processEvent',
-            operation: 'invalidateLeaderboardCache',
-            metadata: { eventId: input.eventId, isoWeek: ctx.isoWeek },
-            errorMessage: error instanceof Error ? error.message : String(error),
-          },
-          'Failed to invalidate leaderboard cache after scoring',
-        )
-      })
+      await this.invalidateLeaderboardCache(ctx.isoWeek).catch(() => undefined)
 
-      await this.enqueuePostEventNotifications(ctx, badgeResult).catch((error) => {
-        this.logger.warn(
-          {
-            service: ScoringEventProcessor.name,
-            method: 'processEvent',
-            operation: 'enqueuePostEventNotifications',
-            metadata: { eventId: input.eventId, userId: input.userId },
-            errorMessage: error instanceof Error ? error.message : String(error),
-          },
-          'Failed to enqueue post-event notifications; scoring already persisted',
-        )
-      })
+      await this.enqueuePostEventNotifications(ctx, badgeResult).catch(() => undefined)
 
       return this.buildSuccessEventResult(ctx, stats, badgeResult)
     } catch (error) {
