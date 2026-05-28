@@ -25,7 +25,7 @@ export class LeaderboardService {
   private readonly logger = new Logger(LeaderboardService.name)
 
   constructor(
-    private readonly leaderboardRepo: LeaderboardRepository,
+    private readonly leaderboardRepository: LeaderboardRepository,
     private readonly scoringConfigService: ScoringConfigService,
     @Inject(CACHE_ADAPTER) private readonly cache: ICacheAdapter,
   ) {}
@@ -40,8 +40,8 @@ export class LeaderboardService {
       if (cached) return { ...cached, fromCache: true }
 
       const [weeklyStats, previousWeekStats, { levels }] = await Promise.all([
-        this.leaderboardRepo.findWeeklyStats(week),
-        this.leaderboardRepo.findWeeklyStats(previousWeek),
+        this.leaderboardRepository.findWeeklyStats(week),
+        this.leaderboardRepository.findWeeklyStats(previousWeek),
         this.scoringConfigService.getConfig(),
       ])
 
@@ -74,7 +74,7 @@ export class LeaderboardService {
       if (cached) return { ...cached, fromCache: true }
 
       const [allTimeStats, { levels }] = await Promise.all([
-        this.leaderboardRepo.findAllUserStats(),
+        this.leaderboardRepository.findAllUserStats(),
         this.scoringConfigService.getConfig(),
       ])
 

@@ -41,6 +41,7 @@ Auth: JWT Bearer token obtained from `POST /auth/login`.
 - Public methods in services and repositories must declare explicit return types.
 - Keep services and repositories lean; orchestration and data access responsibilities should stay focused.
 - Use descriptive variable names for domain data (`txClient`, `badgeDefinition`, `eventContext`) and avoid ambiguous short names (`tx`, `def`, `ctx`, `res`) unless in trivial local loops.
+- Constructor-injected dependency fields must use descriptive service-aligned names (`deduplicationService`, `configService`, `usersRepository`) and avoid short aliases (`dedup`, `config`, `repo`).
 - Use one top-level try/catch per public service method (avoid multiple nested try/catch blocks).
 - For cache pass-through paths, prefer graceful fallback (`.catch` warning + continue) over dedicated try/catch blocks.
 - In catch blocks, log structured context (`service`, `method`, `operation`, relevant identifiers) and map to safe Nest exceptions for HTTP via `handleServiceError`.

@@ -19,12 +19,12 @@ export class NotificationsService implements OnModuleInit {
   private emailEnabled = false
 
   constructor(
-    private readonly config: ConfigService,
-    private readonly notificationsRepo: NotificationsRepository,
+    private readonly configService: ConfigService,
+    private readonly notificationsRepository: NotificationsRepository,
   ) {}
 
   onModuleInit(): void {
-    const apiKey = this.config.get<string>('RESEND_API_KEY')
+    const apiKey = this.configService.get<string>('RESEND_API_KEY')
     if (!apiKey) {
       this.logger.warn(
         'RESEND_API_KEY not configured — email notifications disabled. ' +
@@ -38,14 +38,14 @@ export class NotificationsService implements OnModuleInit {
 
   async sendBadgeUnlock(userId: string, badgeType: BadgeType): Promise<void> {
     try {
-      const user = await this.notificationsRepo.findUserById(userId)
+      const user = await this.notificationsRepository.findUserById(userId)
       if (!user) return
 
       const badgeDefinition = BADGE_DEFINITIONS.find(
         (candidateBadgeDefinition) => candidateBadgeDefinition.type === badgeType,
       )
 
-      await this.notificationsRepo.createNotificationLog({
+      await this.notificationsRepository.createNotificationLog({
         userId,
         type: 'BADGE_UNLOCK',
         metadata: { badgeType, displayName: badgeDefinition?.displayName },
@@ -75,10 +75,10 @@ export class NotificationsService implements OnModuleInit {
 
   async sendStreakRisk(userId: string, streak: number): Promise<void> {
     try {
-      const user = await this.notificationsRepo.findUserById(userId)
+      const user = await this.notificationsRepository.findUserById(userId)
       if (!user) return
 
-      await this.notificationsRepo.createNotificationLog({
+      await this.notificationsRepository.createNotificationLog({
         userId,
         type: 'STREAK_RISK',
         metadata: { streak },
@@ -113,7 +113,7 @@ export class NotificationsService implements OnModuleInit {
     tomorrow.setDate(today.getDate() + 1)
 
     try {
-      const existing = await this.notificationsRepo.findNotificationToday(
+      const existing = await this.notificationsRepository.findNotificationToday(
         userId,
         type,
         today,
@@ -135,7 +135,7 @@ export class NotificationsService implements OnModuleInit {
     params: ListNotificationLogsParams,
   ): Promise<{ items: Awaited<ReturnType<NotificationsRepository['findNotificationLogs']>>[0]; total: number; limit: number; offset: number }> {
     try {
-      const [items, total] = await this.notificationsRepo.findNotificationLogs(params)
+      const [items, total] = await this.notificationsRepository.findNotificationLogs(params)
       return { items, total, limit: params.limit, offset: params.offset }
     } catch (error) {
       handleServiceError(this.logger, error, {
@@ -154,7 +154,7 @@ export class NotificationsService implements OnModuleInit {
       if (!template) return { accepted: false }
 
       const effectiveUserId = params.userId ?? params.actorUserId
-      const user = await this.notificationsRepo.findUserById(effectiveUserId)
+      const user = await this.notificationsRepository.findUserById(effectiveUserId)
       if (!user) return { accepted: false }
 
       if (params.templateId === 'BADGE_UNLOCK') {
@@ -187,7 +187,7 @@ export class NotificationsService implements OnModuleInit {
       (candidateBadgeDefinition) => candidateBadgeDefinition.type === badgeType,
     )
 
-    await this.notificationsRepo.createNotificationLog({
+    await this.notificationsRepository.createNotificationLog({
       userId: effectiveUserId,
       type: params.templateId,
       metadata: { badgeType, displayName: badgeDefinition?.displayName, toEmail: params.toEmail },
@@ -212,7 +212,7 @@ export class NotificationsService implements OnModuleInit {
   ): Promise<{ accepted: boolean }> {
     const effectiveUserId = params.userId ?? params.actorUserId
 
-    await this.notificationsRepo.createNotificationLog({
+    await this.notificationsRepository.createNotificationLog({
       userId: effectiveUserId,
       type: params.templateId,
       metadata: { streak, toEmail: params.toEmail },

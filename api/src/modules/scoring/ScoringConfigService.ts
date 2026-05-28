@@ -12,7 +12,7 @@ export class ScoringConfigService {
   private readonly logger = new Logger(ScoringConfigService.name)
 
   constructor(
-    @Inject(SCORING_CONFIG_REPOSITORY) private readonly repository: IScoringConfigRepository,
+    @Inject(SCORING_CONFIG_REPOSITORY) private readonly scoringConfigRepository: IScoringConfigRepository,
     @Inject(CACHE_ADAPTER) private readonly cache: ICacheAdapter,
   ) {}
 
@@ -21,7 +21,7 @@ export class ScoringConfigService {
       const cached = await this.cache.get<ScoringConfig>(CacheKey.scoringConfig())
       if (cached) return cached
 
-      const config = await this.repository.getConfig()
+      const config = await this.scoringConfigRepository.getConfig()
       await this.cache.set(CacheKey.scoringConfig(), config, CACHE_TTL_SCORING_CONFIG)
       return config
     } catch (error) {

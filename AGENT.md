@@ -7,6 +7,7 @@
 - Prefer shared contracts over inline ad-hoc shapes for reusable data structures.
 - Prefer shared enums for reusable domain value sets over repeated string literals.
 - Use descriptive camelCase identifiers for domain variables and avoid ambiguous short names.
+- Constructor-injected dependency field names must be explicit and service-aligned (for example `deduplicationService`, `configService`, `usersRepository`) instead of short aliases.
 
 ## Type and interface rules
 

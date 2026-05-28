@@ -5,4 +5,5 @@ Web-specific notes:
 - Reuse shared contracts and avoid inline ad-hoc types in complex components.
 - Prefer enum-backed shared constants over duplicated string literals for domain states and modes.
 - Use descriptive camelCase identifiers for domain variables; avoid ambiguous short names that hide intent.
+- Constructor-injected dependency properties must be descriptive and type-aligned (for example `configService`, `notificationsService`) rather than shortened aliases.
 - Surface user-safe error states in UI while preserving structured logs on server boundaries.

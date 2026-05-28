@@ -24,10 +24,10 @@ export class GenericAdapter implements CrmAdapter {
   private readonly secret: string
 
   constructor(
-    private readonly config: ConfigService,
+    private readonly configService: ConfigService,
     private readonly usersService: UsersService,
   ) {
-    this.secret = config.get<string>('WEBHOOK_SECRET_GENERIC') as string
+    this.secret = configService.get<string>('WEBHOOK_SECRET_GENERIC') as string
   }
 
   async verifySignature(req: RawRequest): Promise<boolean> {

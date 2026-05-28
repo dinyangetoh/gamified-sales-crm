@@ -32,11 +32,11 @@ export class ScoringEventProcessor {
   private readonly logger = new Logger(ScoringEventProcessor.name)
 
   constructor(
-    private readonly scoringRepo: ScoringRepository,
+    private readonly scoringRepository: ScoringRepository,
     private readonly scoringConfigService: ScoringConfigService,
     private readonly badgesService: BadgesService,
     private readonly usersService: UsersService,
-    private readonly dedup: DeduplicationService,
+    private readonly deduplicationService: DeduplicationService,
     @Inject(CACHE_ADAPTER) private readonly cache: ICacheAdapter,
     @InjectQueue(QueueName.NOTIFICATION) private readonly notificationQueue: Queue,
   ) {}
@@ -46,7 +46,7 @@ export class ScoringEventProcessor {
       await this.usersService.findOrThrow(input.userId)
       const provider = input.provider ?? 'generic'
       const timestamp = new Date(input.timestamp)
-      const alreadyProcessed = await this.dedup.isProcessed(input.eventId, provider)
+      const alreadyProcessed = await this.deduplicationService.isProcessed(input.eventId, provider)
 
       if (alreadyProcessed) {
         return this.buildDuplicateEventResult(input.eventId)
@@ -98,7 +98,7 @@ export class ScoringEventProcessor {
     const capConfig = rules.dailyCaps[input.eventType]
 
     if (capConfig?.isActive) {
-      const capRow = await this.scoringRepo.findDailyCap(input.userId, input.eventType, today)
+      const capRow = await this.scoringRepository.findDailyCap(input.userId, input.eventType, today)
       if (capRow && capRow.count >= capConfig.maxCount) {
         capReached = true
       }
@@ -154,8 +154,8 @@ export class ScoringEventProcessor {
   private async persistScoredEvent(eventContext: EventContext): Promise<{ stats: UserStats; badgeResult: BadgeResult }> {
     const { input, provider, timestamp, streakUpdate, pointsAwarded, capReached } = eventContext
 
-    return this.scoringRepo.runTransaction(async (txClient) => {
-      await this.scoringRepo.createEvent(txClient, {
+    return this.scoringRepository.runTransaction(async (txClient) => {
+      await this.scoringRepository.createEvent(txClient, {
         eventId: input.eventId,
         userId: input.userId,
         provider,
@@ -168,7 +168,7 @@ export class ScoringEventProcessor {
         processedAt: new Date(),
       })
 
-      const statsData = await this.scoringRepo.upsertUserStats(
+      const statsData = await this.scoringRepository.upsertUserStats(
         txClient,
         input.userId,
         {
@@ -194,10 +194,20 @@ export class ScoringEventProcessor {
       )
 
       if (pointsAwarded !== 0) {
-        await this.scoringRepo.upsertWeeklyStat(txClient, input.userId, eventContext.isoWeek, pointsAwarded)
+        await this.scoringRepository.upsertWeeklyStat(
+          txClient,
+          input.userId,
+          eventContext.isoWeek,
+          pointsAwarded,
+        )
       }
 
-      await this.scoringRepo.upsertDailyCap(txClient, input.userId, input.eventType, eventContext.today)
+      await this.scoringRepository.upsertDailyCap(
+        txClient,
+        input.userId,
+        input.eventType,
+        eventContext.today,
+      )
 
       const badgeResult = await this.badgesService.evaluate(
         txClient,
@@ -218,7 +228,7 @@ export class ScoringEventProcessor {
     const { input } = eventContext
 
     for (const unlockedBadgeType of badgeResult.unlocked) {
-      await this.scoringRepo.createTimelineEntry(txClient, {
+      await this.scoringRepository.createTimelineEntry(txClient, {
         userId: input.userId,
         type: TimelineEventType.BADGE_EARNED,
         badgeType: unlockedBadgeType,
@@ -231,7 +241,7 @@ export class ScoringEventProcessor {
     }
 
     if (eventContext.levelUp) {
-      await this.scoringRepo.createTimelineEntry(txClient, {
+      await this.scoringRepository.createTimelineEntry(txClient, {
         userId: input.userId,
         type: TimelineEventType.LEVEL_UP,
         pointsSnapshot: eventContext.newPoints,
@@ -245,7 +255,7 @@ export class ScoringEventProcessor {
       eventContext.streakUpdate &&
       STREAK_MILESTONES.includes(eventContext.newStreak as (typeof STREAK_MILESTONES)[number])
     ) {
-      await this.scoringRepo.createTimelineEntry(txClient, {
+      await this.scoringRepository.createTimelineEntry(txClient, {
         userId: input.userId,
         type: TimelineEventType.STREAK_MILESTONE,
         pointsSnapshot: eventContext.newPoints,

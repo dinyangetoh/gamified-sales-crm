@@ -17,8 +17,8 @@ export class HubspotAdapter implements CrmAdapter {
   private readonly logger = new Logger(HubspotAdapter.name)
   private readonly secret: string
 
-  constructor(private readonly config: ConfigService) {
-    this.secret = config.get<string>('WEBHOOK_SECRET_HUBSPOT') ?? ''
+  constructor(private readonly configService: ConfigService) {
+    this.secret = configService.get<string>('WEBHOOK_SECRET_HUBSPOT') ?? ''
   }
 
   async verifySignature(req: RawRequest): Promise<boolean> {

@@ -15,7 +15,7 @@ import { handleServiceError } from '../../common/errors/ServiceErrorHandler'
 export class BadgesService {
   private readonly logger = new Logger(BadgesService.name)
 
-  constructor(private readonly badgesRepo: BadgesRepository) {}
+  constructor(private readonly badgesRepository: BadgesRepository) {}
 
   async evaluate(
     txClient: TxClient,
@@ -79,7 +79,7 @@ export class BadgesService {
     let badgeProgressRecord: { id: string; currentCount: number; isCompleted: boolean }
 
     if (weekKey !== null) {
-      badgeProgressRecord = await this.badgesRepo.upsertBadgeProgress(
+      badgeProgressRecord = await this.badgesRepository.upsertBadgeProgress(
         txClient,
         userId,
         badgeDefinition.type,
@@ -87,18 +87,18 @@ export class BadgesService {
         badgeDefinition.targetCount,
       )
     } else {
-      const existingBadgeProgress = await this.badgesRepo.findBadgeProgress(
+      const existingBadgeProgress = await this.badgesRepository.findBadgeProgress(
         txClient,
         userId,
         badgeDefinition.type,
         null,
       )
       if (existingBadgeProgress) {
-        badgeProgressRecord = await this.badgesRepo.updateBadgeProgress(txClient, existingBadgeProgress.id, {
+        badgeProgressRecord = await this.badgesRepository.updateBadgeProgress(txClient, existingBadgeProgress.id, {
           currentCount: existingBadgeProgress.currentCount + 1,
         })
       } else {
-        badgeProgressRecord = await this.badgesRepo.createBadgeProgress(txClient, {
+        badgeProgressRecord = await this.badgesRepository.createBadgeProgress(txClient, {
           userId,
           badgeType: badgeDefinition.type,
           currentCount: 1,
@@ -116,8 +116,8 @@ export class BadgesService {
       return false
     }
 
-    await this.badgesRepo.createBadgeAward(txClient, userId, badgeDefinition.type, weekKey, eventAt)
-    await this.badgesRepo.updateBadgeProgress(txClient, badgeProgressRecord.id, { isCompleted: true })
+    await this.badgesRepository.createBadgeAward(txClient, userId, badgeDefinition.type, weekKey, eventAt)
+    await this.badgesRepository.updateBadgeProgress(txClient, badgeProgressRecord.id, { isCompleted: true })
     return true
   }
 
@@ -130,22 +130,22 @@ export class BadgesService {
   ): Promise<boolean> {
     if (currentStreak !== badgeDefinition.targetCount) return false
 
-    if (await this.badgesRepo.hasHotStreakAwardInCurrentStreak(txClient, userId, currentStreak, eventAt)) {
+    if (await this.badgesRepository.hasHotStreakAwardInCurrentStreak(txClient, userId, currentStreak, eventAt)) {
       return false
     }
 
-    const existingBadgeProgress = await this.badgesRepo.findBadgeProgress(
+    const existingBadgeProgress = await this.badgesRepository.findBadgeProgress(
       txClient,
       userId,
       badgeDefinition.type,
       null,
     )
     if (existingBadgeProgress) {
-      await this.badgesRepo.updateBadgeProgress(txClient, existingBadgeProgress.id, {
+      await this.badgesRepository.updateBadgeProgress(txClient, existingBadgeProgress.id, {
         currentCount: currentStreak,
       })
     } else {
-      await this.badgesRepo.createBadgeProgress(txClient, {
+      await this.badgesRepository.createBadgeProgress(txClient, {
         userId,
         badgeType: badgeDefinition.type,
         currentCount: currentStreak,
@@ -154,7 +154,7 @@ export class BadgesService {
       })
     }
 
-    await this.badgesRepo.createBadgeAward(txClient, userId, badgeDefinition.type, null, eventAt)
+    await this.badgesRepository.createBadgeAward(txClient, userId, badgeDefinition.type, null, eventAt)
     return true
   }
 
@@ -166,13 +166,13 @@ export class BadgesService {
   ): Promise<boolean> {
     switch (badgeDefinition.repeatPolicy) {
       case BadgeRepeatPolicy.ONCE:
-        return this.badgesRepo.hasBadgeAward(txClient, userId, badgeDefinition.type)
+        return this.badgesRepository.hasBadgeAward(txClient, userId, badgeDefinition.type)
       case BadgeRepeatPolicy.PER_ISO_WEEK:
-        return this.badgesRepo.hasBadgeAwardForWeek(txClient, userId, badgeDefinition.type, isoWeek)
+        return this.badgesRepository.hasBadgeAwardForWeek(txClient, userId, badgeDefinition.type, isoWeek)
       case BadgeRepeatPolicy.REPEATABLE_LIFETIME:
         return false
       default:
-        return this.badgesRepo.hasBadgeAward(txClient, userId, badgeDefinition.type)
+        return this.badgesRepository.hasBadgeAward(txClient, userId, badgeDefinition.type)
     }
   }
 }

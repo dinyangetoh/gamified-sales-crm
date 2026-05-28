@@ -7,6 +7,7 @@
 - Public service/repository methods must have explicit return types.
 - Keep services/repositories lean and responsibility-focused.
 - Use descriptive camelCase variable names (`txClient`, `badgeDefinition`, `eventContext`) and avoid ambiguous short names (`tx`, `def`, `ctx`, `res`) for domain logic.
+- Constructor-injected dependency fields must use descriptive type-aligned names (`deduplicationService`, `configService`, `usersRepository`) and must not use shortened aliases like `dedup`, `config`, or `repo`.
 - Use one top-level try/catch per public service method.
 - Avoid nested try/catch blocks in the same method.
 - For cache pass-through paths, use graceful fallback (`.catch` + warn) instead of dedicated try/catch.

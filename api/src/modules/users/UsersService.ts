@@ -19,11 +19,11 @@ import type {
 export class UsersService {
   private readonly logger = new Logger(UsersService.name)
 
-  constructor(private readonly usersRepo: UsersRepository) {}
+  constructor(private readonly usersRepository: UsersRepository) {}
 
   async findOrThrow(userId: string): Promise<User> {
     try {
-      const user = await this.usersRepo.findById(userId)
+      const user = await this.usersRepository.findById(userId)
       if (!user) throw new NotFoundException(`User ${userId} not found`)
       return user
     } catch (error) {
@@ -39,7 +39,7 @@ export class UsersService {
 
   async findByEmail(email: string): Promise<User | null> {
     try {
-      return await this.usersRepo.findByEmail(email)
+      return await this.usersRepository.findByEmail(email)
     } catch (error) {
       handleServiceError(this.logger, error, {
         service: UsersService.name,
@@ -53,7 +53,7 @@ export class UsersService {
 
   async getStats(userId: string): Promise<UserStats | null> {
     try {
-      return await this.usersRepo.findStats(userId)
+      return await this.usersRepository.findStats(userId)
     } catch (error) {
       handleServiceError(this.logger, error, {
         service: UsersService.name,
@@ -67,7 +67,7 @@ export class UsersService {
 
   async findUsersAtRisk(yesterday: Date, today: Date): ReturnType<UsersRepository['findUsersAtRisk']> {
     try {
-      return await this.usersRepo.findUsersAtRisk(yesterday, today)
+      return await this.usersRepository.findUsersAtRisk(yesterday, today)
     } catch (error) {
       handleServiceError(this.logger, error, {
         service: UsersService.name,
@@ -81,7 +81,7 @@ export class UsersService {
 
   async listSalesRepSummaries(): Promise<SalesRepSummary[]> {
     try {
-      const salesRepUsers = await this.usersRepo.findSalesReps()
+      const salesRepUsers = await this.usersRepository.findSalesReps()
       return salesRepUsers.map((salesRepUser) => ({
         userId: salesRepUser.id,
         name: salesRepUser.name,
@@ -107,9 +107,9 @@ export class UsersService {
   async getProfile(userId: string): Promise<UserProfileResult> {
     try {
       const user = await this.findOrThrow(userId)
-      const stats = await this.usersRepo.findStats(userId)
-      const earned = await this.usersRepo.findBadgeAwards(userId)
-      const inProgress = await this.usersRepo.findBadgeProgressInProgress(userId)
+      const stats = await this.usersRepository.findStats(userId)
+      const earned = await this.usersRepository.findBadgeAwards(userId)
+      const inProgress = await this.usersRepository.findBadgeProgressInProgress(userId)
 
       const earnedBadgeTypes = new Set(earned.map((badgeAward) => badgeAward.badgeType))
       const earnedBadges = this.aggregateEarnedBadges(earned)
@@ -152,7 +152,7 @@ export class UsersService {
 
   async getTimeline(userId: string, limit = 20, offset = 0): Promise<TimelineResult> {
     try {
-      const [entries, total] = await this.usersRepo.findTimeline(userId, limit, offset)
+      const [entries, total] = await this.usersRepository.findTimeline(userId, limit, offset)
 
       const timeline = entries.map((timelineEntry) => {
         const badgeDefinition = timelineEntry.badgeType
@@ -193,7 +193,7 @@ export class UsersService {
     try {
       const limit = params.limit ?? 50
       const offset = params.offset ?? 0
-      const [events, total] = await this.usersRepo.findEventFeed(userId, { ...params, limit, offset })
+      const [events, total] = await this.usersRepository.findEventFeed(userId, { ...params, limit, offset })
       return {
         events: events.map((eventRecord) => ({
           ...eventRecord,
