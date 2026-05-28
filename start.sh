@@ -4,7 +4,7 @@
 #
 # Starts the full development stack in one command:
 #   • Docker infrastructure (Postgres + Redis)
-#   • NestJS API  →  http://localhost:4000
+#   • NestJS API  →  http://localhost:3001
 #   • Next.js Web →  http://localhost:3000
 #
 # Usage:
@@ -91,6 +91,10 @@ if [ ! -f "$SCRIPT_DIR/api/.env" ]; then
     exit 1
   fi
 fi
+
+# Resolve API port from api/.env (fallback to 3001)
+API_PORT="$(awk -F= '/^PORT=/{print $2; exit}' "$SCRIPT_DIR/api/.env" | tr -d '[:space:]')"
+API_PORT="${API_PORT:-3001}"
 
 # ── --stop ────────────────────────────────────────────────────────────────────
 if [ "$STOP" = true ]; then
@@ -183,7 +187,7 @@ API_PID=$!
 log "Waiting for API to be ready..."
 API_UP=false
 for i in $(seq 1 60); do
-  if curl -sf http://localhost:4000/health >/dev/null 2>&1; then
+  if curl -sf "http://localhost:${API_PORT}/health" >/dev/null 2>&1; then
     API_UP=true
     break
   fi
@@ -191,8 +195,8 @@ for i in $(seq 1 60); do
 done
 
 if [ "$API_UP" = true ]; then
-  ok "API ready → http://localhost:4000"
-  ok "Swagger  → http://localhost:4000/api-docs"
+  ok "API ready → http://localhost:${API_PORT}"
+  ok "Swagger  → http://localhost:${API_PORT}/api-docs"
 else
   warn "API did not respond in 60s — check [api] logs above"
 fi
@@ -215,9 +219,9 @@ printf "${BOLD}${GREEN}  Rally is running!${NC}\n"
 printf "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 printf "\n"
 printf "  ${CYAN}Dashboard${NC}  →  http://localhost:3000\n"
-printf "  ${CYAN}API${NC}        →  http://localhost:4000\n"
-printf "  ${CYAN}Swagger${NC}    →  http://localhost:4000/api-docs\n"
-printf "  ${CYAN}Health${NC}     →  http://localhost:4000/health\n"
+printf "  ${CYAN}API${NC}        →  http://localhost:${API_PORT}\n"
+printf "  ${CYAN}Swagger${NC}    →  http://localhost:${API_PORT}/api-docs\n"
+printf "  ${CYAN}Health${NC}     →  http://localhost:${API_PORT}/health\n"
 printf "\n"
 printf "  ${DIM}Demo: alice@demo.com / Demo1234!  (rep)${NC}\n"
 printf "  ${DIM}       manager@demo.com / Demo1234!  (manager)${NC}\n"
