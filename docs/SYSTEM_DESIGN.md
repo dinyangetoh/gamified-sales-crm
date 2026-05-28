@@ -374,13 +374,15 @@ Two simultaneous events that both cross a badge threshold will race on the `INSE
 ```mermaid
 flowchart LR
     A["GET /leaderboard?week=2025-W21"] --> B[Parse ISO week → date range]
-    B --> C["SELECT userId, SUM(delta) AS weekPoints\nFROM AwardTimeline\nWHERE occurredAt BETWEEN weekStart AND weekEnd\nGROUP BY userId\nORDER BY weekPoints DESC, userId ASC"]
+    B --> C["SELECT userId, SUM(delta) AS weekPoints\nFROM AwardTimeline\nWHERE occurredAt BETWEEN weekStart AND weekEnd\nGROUP BY userId\nORDER BY weekPoints DESC, totalXP DESC, currentStreak DESC"]
     C --> D[JOIN UserStats for totalXp, level, streakDays]
     D --> E[JOIN BadgeAward for badge list]
     E --> F[Return ranked list]
 ```
 
-**Sort rule:** `weekPoints DESC`, then `userId ASC` for tie-break (deterministic, matches spec).
+**Sort rule (weekly):** `weekPoints DESC`, then `totalXP DESC`, then `currentStreak DESC`.
+
+**Sort rule (all-time):** `totalXP DESC`, then `currentStreak DESC`.
 
 **Points-behind calculation:** `leaderPosition[0].weekPoints - entry.weekPoints` — surfaced in the UI as contextual motivation ("Diana is 60 pts behind you").
 
@@ -735,7 +737,7 @@ npm run test:cov
 | 6th `lead_contacted` in a day → `pointsAwarded: 0` | Daily cap correctness |
 | `DEAL_LOST` with XP = 5 → XP floors at 0 | No negative XP |
 | Two concurrent badge-threshold events → exactly one badge awarded | Race condition safety |
-| Leaderboard tie-break → lower `userId` string ranks higher | Deterministic sort |
+| Leaderboard tie-break → higher `totalXP`, then higher `currentStreak` ranks higher | Business-driven tie-break |
 
 ---
 

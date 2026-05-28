@@ -8,14 +8,18 @@ export class LeaderboardRepository {
   findWeeklyStats(isoWeek: string) {
     return this.prisma.weeklyStat.findMany({
       where: { isoWeek },
-      orderBy: [{ weekPoints: 'desc' }, { userId: 'asc' }],
+      orderBy: [
+        { weekPoints: 'desc' },
+        { user: { stats: { totalXP: 'desc' } } },
+        { user: { stats: { currentStreak: 'desc' } } },
+      ],
       include: { user: { include: { stats: true, badgeAwards: true } } },
     })
   }
 
   findAllUserStats() {
     return this.prisma.userStats.findMany({
-      orderBy: [{ totalXP: 'desc' }, { userId: 'asc' }],
+      orderBy: [{ totalXP: 'desc' }, { currentStreak: 'desc' }],
       include: { user: { include: { badgeAwards: true } } },
     })
   }
