@@ -83,13 +83,16 @@ graph TD
 |---|---|
 | **Webhook Guard** | HMAC signature validation per CRM provider before any processing |
 | **Events Controller** | HTTP boundary — request validation, response shaping |
-| **Scoring Service** | Core orchestrator — idempotency check, point calculation, level derivation, transaction management |
+| **Scoring Service** | Public facade — single `processEvent()` method delegating to `ScoringEventProcessor` |
+| **Scoring Event Processor** | Core orchestrator — idempotency check, point calculation, level derivation, transaction management, non-blocking side-effect dispatch via `runInBackground()` |
 | **Badges Service** | Evaluates badge conditions post-scoring; awards exactly once |
-| **Leaderboard Service** | Aggregates weekly points from `AwardTimeline`; returns ranked list |
+| **Leaderboard Service** | Aggregates weekly points from `WeeklyStat`; returns ranked list with `pointsGap` and `rankDelta` |
 | **Notification Queue** | Decouples notification side-effects from the scoring transaction |
 | **Notification Worker** | Consumes jobs from BullMQ; calls Resend for email delivery |
+| **Scheduled Worker** | Runs time-based jobs (streak risk check at 18:00 UTC) via BullMQ repeatable jobs |
+| **Health Controller** | `GET /health` — Postgres + Redis liveness checks for load balancer readiness probes |
 | **PostgreSQL** | Durable source of truth for all gamification state |
-| **Redis** | Fast-path idempotency (`setNX`), BullMQ backing store |
+| **Redis** | Fast-path idempotency (`setNX`), BullMQ backing store, leaderboard cache |
 
 ---
 
@@ -456,6 +459,32 @@ Reject if |serverTime - requestTimestamp| > 5 minutes
 
 ---
 
+## Error Handling Architecture
+
+Error handling is centralised across two layers:
+
+### 1 — `handleServiceError()` — Service Layer
+
+Every service method wraps its logic in a try/catch and delegates to `handleServiceError(logger, error, context)`:
+
+- **HTTP exceptions** (`NotFoundException`, `UnauthorizedException`, etc.) are re-thrown as-is — the correct status code propagates unchanged
+- **Unknown errors** are logged with full structured context (`service`, `method`, `operation`, `metadata`, `stack`) then re-thrown as `InternalServerErrorException` with a safe, caller-facing message — no internal details leak to the API consumer
+
+### 2 — `GlobalExceptionFilter` — HTTP Layer
+
+Catches all unhandled exceptions at the NestJS boundary and normalises responses:
+
+| Exception type | Behaviour |
+|---|---|
+| `HttpException` | Status + structured `{ statusCode, error, message, timestamp, path }` |
+| `PrismaClientKnownRequestError P2002` (unique violation) | `200 { accepted: true, duplicate: true, pointsAwarded: 0 }` — last-resort idempotency guard |
+| `PrismaClientKnownRequestError P2025` (not found) | `404 Not Found` |
+| All others | `500 Internal Server Error` + structured log with `path` and `x-request-id` |
+
+The `P2002` case is significant: it catches the race condition where two simultaneous events both pass the Redis deduplication check before either commits to the database — the second one hits the `eventId @id` unique constraint and is returned as `duplicate: true` instead of a 500.
+
+---
+
 ## 8. Notification Pipeline
 
 ### Queue Architecture
@@ -477,17 +506,19 @@ flowchart LR
 
 ### Notification Types
 
-| Key | Trigger | Recipient |
-|---|---|---|
-| `BADGE_UNLOCK` | BadgeAward written | Rep |
-| `LEVEL_UP` | Level increases | Rep |
-| `NEAR_BADGE` | Badge progress ≥ 80% | Rep |
-| `STREAK_RISK` | No activity logged by 18:00 local | Rep |
-| `STREAK_BROKEN` | Streak resets to 0 | Rep |
-| `WEEKLY_REP_DIGEST` | Sunday 20:00 UTC | Rep |
-| `END_OF_WEEK_PUSH` | Sunday 17:00 UTC | Rep |
-| `TOP_OF_WEEK_AWARD` | After leaderboard locks | Rep (rank #1) |
-| `WEEKLY_MGR_DIGEST` | Monday 08:00 UTC | Manager |
+| Key | Trigger | Mechanism | Recipient |
+|---|---|---|---|
+| `BADGE_UNLOCK` | BadgeAward written | Event-driven (enqueued post-commit) | Rep |
+| `LEVEL_UP` | Level increases | Event-driven (enqueued post-commit) | Rep |
+| `STREAK_RISK` | No activity by 18:00 UTC | Scheduled (`ScheduledProcessor`) | Rep |
+| `NEAR_BADGE` | Badge progress ≥ 80% | Event-driven | Rep |
+| `STREAK_BROKEN` | Streak resets to 0 | Event-driven | Rep |
+| `WEEKLY_REP_DIGEST` | Sunday 20:00 UTC | Scheduled | Rep |
+| `END_OF_WEEK_PUSH` | Sunday 17:00 UTC | Scheduled | Rep |
+| `TOP_OF_WEEK_AWARD` | After leaderboard locks | Scheduled | Rep (rank #1) |
+| `WEEKLY_MGR_DIGEST` | Monday 08:00 UTC | Scheduled | Manager |
+
+**`STREAK_RISK` is live:** `ScheduledProcessor` runs `streakRiskCheck()` — queries all reps with a streak > 0 who have had no activity today, checks `NotificationLog` to avoid duplicate sends, then enqueues `STREAK_RISK` jobs for each at-risk rep.
 
 ---
 

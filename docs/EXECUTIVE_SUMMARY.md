@@ -2,7 +2,7 @@
 
 > A gamification engine for Sales CRMs that turns daily activity into measurable momentum.
 
-**Document audience:** CEO / Non-technical stakeholders  
+**Document audience:** Non-technical stakeholders  
 **Companion document:** [`SYSTEM_DESIGN.md`](./SYSTEM_DESIGN.md) — for the engineering team
 
 ---
@@ -72,22 +72,28 @@ The current submission is a fully functional proof-of-concept. The architecture 
 ### 4 — CRM-agnostic by design
 The integration layer is built as an adapter pattern. HubSpot, Pipedrive, and Salesforce are all documented. HubSpot is wired up (with one stub for user resolution pending live API access). Adding a new CRM requires writing one adapter class, not touching the core engine.
 
+### 5 — Engineered to be observable from day one
+Every scoring decision is logged to an immutable `AwardTimeline`. Every error is structured (`service`, `method`, `operation`, `stack`) before being written to the log and before a safe generic message is returned to the caller. The health endpoint (`GET /health`) checks Postgres and Redis liveness — a requirement for any cloud deployment. Nothing fails silently.
+
 ---
 
 ## What's Working Now (POC)
 
 | Feature | Status |
-|---|---|
+|---|—--|
 | Event ingestion API | ✅ Live |
 | Scoring (all 5 event types) | ✅ Live |
 | Daily cap (lead_contacted ≤ 5/day) | ✅ Live |
 | Idempotency (no duplicate scoring) | ✅ Live |
 | XP and Level system (4 tiers) | ✅ Live |
-| Badge system (3 badges + 3 extended) | ✅ Live |
-| Weekly leaderboard | ✅ Live |
+| Badge system (3 required + 3 extended) | ✅ Live |
+| Weekly leaderboard + all-time view | ✅ Live |
 | Streak tracking | ✅ Live |
+| Streak risk notifications (daily check) | ✅ Live |
+| Health check endpoint (`GET /health`) | ✅ Live |
 | Sales Rep dashboard | ✅ Designed & built |
 | Manager dashboard | ✅ Designed & built |
+| Manager event simulator | ✅ Live |
 | Email notification templates | ✅ Designed, delivery scaffolded |
 | Docker (one-command local setup) | ✅ Live |
 | HubSpot user resolution | ⚠️ Stub (requires live API key) |

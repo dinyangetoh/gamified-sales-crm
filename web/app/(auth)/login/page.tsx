@@ -14,7 +14,7 @@ type LoginResponse = { accessToken: string }
 const DEMO_ACCOUNTS = [
   { name: 'Alice Smith', email: 'alice@demo.com', role: 'Sales Rep · Legend', tone: 'lv-4' as const },
   { name: 'Morgan Vale', email: 'manager@demo.com', role: 'Manager', tone: 'lv-3' as const },
-  { name: 'Hannah Lee', email: 'hannah@demo.com', role: 'Sales Rep · Rookie', tone: 'lv-1' as const },
+  { name: 'George Torres', email: 'george@demo.com', role: 'Sales Rep · Elite', tone: 'lv-3' as const },
 ]
 
 function roleToPath(role: JwtRole) {
