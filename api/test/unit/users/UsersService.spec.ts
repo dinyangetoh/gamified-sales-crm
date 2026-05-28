@@ -123,11 +123,11 @@ describe('UsersService', () => {
         } as any,
       ])
 
-      const res = await service.listSalesRepSummaries()
-      expect(res).toHaveLength(1)
-      expect(res[0].userId).toBe('rep-1')
-      expect(res[0].eventCount).toBe(42)
-      expect(res[0].lastActivityAt).toEqual(lastActivityAt)
+      const salesRepSummaries = await service.listSalesRepSummaries()
+      expect(salesRepSummaries).toHaveLength(1)
+      expect(salesRepSummaries[0].userId).toBe('rep-1')
+      expect(salesRepSummaries[0].eventCount).toBe(42)
+      expect(salesRepSummaries[0].lastActivityAt).toEqual(lastActivityAt)
     })
   })
 })

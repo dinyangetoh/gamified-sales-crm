@@ -17,10 +17,10 @@ export class ConfigService {
   async getLevelConfigs(): Promise<LevelConfigDto[]> {
     try {
       const { levels } = await this.scoringConfigService.getConfig()
-      return levels.map((c) => ({
-        level: c.level,
-        minXP: c.minXP,
-        label: c.label,
+      return levels.map((levelConfig) => ({
+        level: levelConfig.level,
+        minXP: levelConfig.minXP,
+        label: levelConfig.label,
       }))
     } catch (error) {
       handleServiceError(this.logger, error, {
@@ -33,10 +33,10 @@ export class ConfigService {
   }
 
   getEventTypeOptions(): EventTypeOptionDto[] {
-    return listEventTypeOptions().map((o) => ({
-      value: o.value,
-      displayName: o.displayName,
-      shortName: o.shortName,
+    return listEventTypeOptions().map((eventTypeOption) => ({
+      value: eventTypeOption.value,
+      displayName: eventTypeOption.displayName,
+      shortName: eventTypeOption.shortName,
     }))
   }
 
@@ -60,18 +60,18 @@ export class ConfigService {
           isActive: config.dailyCaps[eventType].isActive,
           updatedAt,
         })),
-        levelConfig: config.levels.map((l) => ({
-          level: l.level,
-          minXP: l.minXP,
-          label: l.label,
+        levelConfig: config.levels.map((levelConfig) => ({
+          level: levelConfig.level,
+          minXP: levelConfig.minXP,
+          label: levelConfig.label,
         })),
-        badges: BADGE_DEFINITIONS.map((d) => ({
-          type: d.type,
-          displayName: d.displayName,
-          description: d.description,
-          iconUrl: d.iconUrl,
-          targetCount: d.targetCount,
-          windowType: d.windowType,
+        badges: BADGE_DEFINITIONS.map((badgeDefinition) => ({
+          type: badgeDefinition.type,
+          displayName: badgeDefinition.displayName,
+          description: badgeDefinition.description,
+          iconUrl: badgeDefinition.iconUrl,
+          targetCount: badgeDefinition.targetCount,
+          windowType: badgeDefinition.windowType,
         })),
       }
     } catch (error) {

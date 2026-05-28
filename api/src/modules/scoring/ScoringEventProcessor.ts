@@ -52,14 +52,14 @@ export class ScoringEventProcessor {
         return this.buildDuplicateEventResult(input.eventId)
       }
 
-      const ctx = await this.prepareEventContext(input, provider, timestamp)
-      const { stats, badgeResult } = await this.persistScoredEvent(ctx)
+      const eventContext = await this.prepareEventContext(input, provider, timestamp)
+      const { stats, badgeResult } = await this.persistScoredEvent(eventContext)
 
-      await this.invalidateLeaderboardCache(ctx.isoWeek).catch(() => undefined)
+      await this.invalidateLeaderboardCache(eventContext.isoWeek).catch(() => undefined)
 
-      await this.enqueuePostEventNotifications(ctx, badgeResult).catch(() => undefined)
+      await this.enqueuePostEventNotifications(eventContext, badgeResult).catch(() => undefined)
 
-      return this.buildSuccessEventResult(ctx, stats, badgeResult)
+      return this.buildSuccessEventResult(eventContext, stats, badgeResult)
     } catch (error) {
       handleServiceError(this.logger, error, {
         service: ScoringEventProcessor.name,
@@ -151,11 +151,11 @@ export class ScoringEventProcessor {
     }
   }
 
-  private async persistScoredEvent(ctx: EventContext): Promise<{ stats: UserStats; badgeResult: BadgeResult }> {
-    const { input, provider, timestamp, streakUpdate, pointsAwarded, capReached } = ctx
+  private async persistScoredEvent(eventContext: EventContext): Promise<{ stats: UserStats; badgeResult: BadgeResult }> {
+    const { input, provider, timestamp, streakUpdate, pointsAwarded, capReached } = eventContext
 
-    return this.scoringRepo.runTransaction(async (tx) => {
-      await this.scoringRepo.createEvent(tx, {
+    return this.scoringRepo.runTransaction(async (txClient) => {
+      await this.scoringRepo.createEvent(txClient, {
         eventId: input.eventId,
         userId: input.userId,
         provider,
@@ -169,20 +169,20 @@ export class ScoringEventProcessor {
       })
 
       const statsData = await this.scoringRepo.upsertUserStats(
-        tx,
+        txClient,
         input.userId,
         {
-          totalXP: ctx.newXP,
-          totalPoints: ctx.newPoints,
-          level: ctx.newLevel,
+          totalXP: eventContext.newXP,
+          totalPoints: eventContext.newPoints,
+          level: eventContext.newLevel,
           currentStreak: streakUpdate?.currentStreak ?? 0,
           longestStreak: streakUpdate?.longestStreak ?? 0,
           lastActivityDate: streakUpdate?.lastActivityDate ?? null,
         },
         {
-          totalXP: ctx.newXP,
-          totalPoints: ctx.newPoints,
-          level: ctx.newLevel,
+          totalXP: eventContext.newXP,
+          totalPoints: eventContext.newPoints,
+          level: eventContext.newLevel,
           ...(streakUpdate
             ? {
                 currentStreak: streakUpdate.currentStreak,
@@ -194,64 +194,64 @@ export class ScoringEventProcessor {
       )
 
       if (pointsAwarded !== 0) {
-        await this.scoringRepo.upsertWeeklyStat(tx, input.userId, ctx.isoWeek, pointsAwarded)
+        await this.scoringRepo.upsertWeeklyStat(txClient, input.userId, eventContext.isoWeek, pointsAwarded)
       }
 
-      await this.scoringRepo.upsertDailyCap(tx, input.userId, input.eventType, ctx.today)
+      await this.scoringRepo.upsertDailyCap(txClient, input.userId, input.eventType, eventContext.today)
 
-      const badgeRes = await this.badgesService.evaluate(
-        tx,
+      const badgeResult = await this.badgesService.evaluate(
+        txClient,
         input.userId,
         input.eventType,
-        ctx.isoWeek,
-        ctx.newStreak,
+        eventContext.isoWeek,
+        eventContext.newStreak,
         timestamp,
       )
 
-      await this.recordTimelineEntries(tx, ctx, badgeRes)
+      await this.recordTimelineEntries(txClient, eventContext, badgeResult)
 
-      return { stats: statsData, badgeResult: badgeRes }
+      return { stats: statsData, badgeResult }
     })
   }
 
-  private async recordTimelineEntries(tx: TxClient, ctx: EventContext, badgeResult: BadgeResult) {
-    const { input } = ctx
+  private async recordTimelineEntries(txClient: TxClient, eventContext: EventContext, badgeResult: BadgeResult) {
+    const { input } = eventContext
 
-    for (const badge of badgeResult.unlocked) {
-      await this.scoringRepo.createTimelineEntry(tx, {
+    for (const unlockedBadgeType of badgeResult.unlocked) {
+      await this.scoringRepo.createTimelineEntry(txClient, {
         userId: input.userId,
         type: TimelineEventType.BADGE_EARNED,
-        badgeType: badge,
+        badgeType: unlockedBadgeType,
         eventId: input.eventId,
-        pointsSnapshot: ctx.newPoints,
-        xpSnapshot: ctx.newXP,
-        levelSnapshot: ctx.newLevel,
-        weekKey: ctx.isoWeek,
+        pointsSnapshot: eventContext.newPoints,
+        xpSnapshot: eventContext.newXP,
+        levelSnapshot: eventContext.newLevel,
+        weekKey: eventContext.isoWeek,
       })
     }
 
-    if (ctx.levelUp) {
-      await this.scoringRepo.createTimelineEntry(tx, {
+    if (eventContext.levelUp) {
+      await this.scoringRepo.createTimelineEntry(txClient, {
         userId: input.userId,
         type: TimelineEventType.LEVEL_UP,
-        pointsSnapshot: ctx.newPoints,
-        xpSnapshot: ctx.newXP,
-        levelSnapshot: ctx.newLevel,
-        metadata: { from: ctx.currentStats?.level ?? 1, to: ctx.newLevel },
+        pointsSnapshot: eventContext.newPoints,
+        xpSnapshot: eventContext.newXP,
+        levelSnapshot: eventContext.newLevel,
+        metadata: { from: eventContext.currentStats?.level ?? 1, to: eventContext.newLevel },
       })
     }
 
     if (
-      ctx.streakUpdate &&
-      STREAK_MILESTONES.includes(ctx.newStreak as (typeof STREAK_MILESTONES)[number])
+      eventContext.streakUpdate &&
+      STREAK_MILESTONES.includes(eventContext.newStreak as (typeof STREAK_MILESTONES)[number])
     ) {
-      await this.scoringRepo.createTimelineEntry(tx, {
+      await this.scoringRepo.createTimelineEntry(txClient, {
         userId: input.userId,
         type: TimelineEventType.STREAK_MILESTONE,
-        pointsSnapshot: ctx.newPoints,
-        xpSnapshot: ctx.newXP,
-        levelSnapshot: ctx.newLevel,
-        metadata: { streak: ctx.newStreak },
+        pointsSnapshot: eventContext.newPoints,
+        xpSnapshot: eventContext.newXP,
+        levelSnapshot: eventContext.newLevel,
+        metadata: { streak: eventContext.newStreak },
       })
     }
   }
@@ -261,18 +261,18 @@ export class ScoringEventProcessor {
     await this.cache.del(CacheKey.leaderboardAllTime())
   }
 
-  private async enqueuePostEventNotifications(ctx: EventContext, badgeResult: BadgeResult) {
-    if (ctx.levelUp) {
+  private async enqueuePostEventNotifications(eventContext: EventContext, badgeResult: BadgeResult) {
+    if (eventContext.levelUp) {
       await this.notificationQueue.add(NotificationJobName.LEVEL_UP, {
-        userId: ctx.input.userId,
-        level: ctx.newLevel,
+        userId: eventContext.input.userId,
+        level: eventContext.newLevel,
       })
     }
 
-    for (const badge of badgeResult.unlocked) {
+    for (const unlockedBadgeType of badgeResult.unlocked) {
       await this.notificationQueue.add(NotificationJobName.BADGE_UNLOCK, {
-        userId: ctx.input.userId,
-        badge,
+        userId: eventContext.input.userId,
+        badge: unlockedBadgeType,
       })
     }
   }

@@ -5,6 +5,8 @@
 - Use explicit return types for public methods in services and repositories.
 - Keep services and repositories lean with focused responsibilities.
 - Prefer shared contracts over inline ad-hoc shapes for reusable data structures.
+- Prefer shared enums for reusable domain value sets over repeated string literals.
+- Use descriptive camelCase identifiers for domain variables and avoid ambiguous short names.
 
 ## Type and interface rules
 

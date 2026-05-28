@@ -23,8 +23,8 @@ export class AuthService {
       const user = await this.usersService.findByEmail(email)
       if (!user) throw new UnauthorizedException('Invalid credentials')
 
-      const valid = await bcrypt.compare(password, user.passwordHash)
-      if (!valid) throw new UnauthorizedException('Invalid credentials')
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash)
+      if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials')
 
       const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role }
       return {

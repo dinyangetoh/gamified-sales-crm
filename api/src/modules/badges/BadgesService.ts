@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { BadgeType, EventType } from '@db'
 import type { TxClient } from '../../common/prisma/types'
-import { BADGE_DEFINITIONS, type BadgeDefinition } from './badgeDefinitions'
+import {
+  BADGE_DEFINITIONS,
+  BadgeRepeatPolicy,
+  BadgeWindowType,
+  type BadgeDefinition,
+} from './badgeDefinitions'
 import { BadgesRepository } from './BadgesRepository'
 import type { BadgeResult } from './IBadgesService'
 import { handleServiceError } from '../../common/errors/ServiceErrorHandler'
@@ -13,7 +18,7 @@ export class BadgesService {
   constructor(private readonly badgesRepo: BadgesRepository) {}
 
   async evaluate(
-    tx: TxClient,
+    txClient: TxClient,
     userId: string,
     eventType: EventType,
     isoWeek: string,
@@ -21,19 +26,26 @@ export class BadgesService {
     eventAt: Date = new Date(),
   ): Promise<BadgeResult> {
     try {
-      const unlocked: BadgeType[] = []
+      const unlockedBadgeTypes: BadgeType[] = []
 
-      const relevantDefs = BADGE_DEFINITIONS.filter((def) => {
-        if (def.type === BadgeType.HOT_STREAK) return true
-        return def.eventTypes.includes(eventType)
+      const filteredBadgeDefinitions = BADGE_DEFINITIONS.filter((badgeDefinition) => {
+        if (badgeDefinition.type === BadgeType.HOT_STREAK) return true
+        return badgeDefinition.eventTypes.includes(eventType)
       })
 
-      for (const def of relevantDefs) {
-        const earned = await this.tryUnlockBadge(tx, userId, def, isoWeek, currentStreak, eventAt)
-        if (earned) unlocked.push(def.type)
+      for (const badgeDefinition of filteredBadgeDefinitions) {
+        const hasEarnedBadge = await this.tryUnlockBadge(
+          txClient,
+          userId,
+          badgeDefinition,
+          isoWeek,
+          currentStreak,
+          eventAt,
+        )
+        if (hasEarnedBadge) unlockedBadgeTypes.push(badgeDefinition.type)
       }
 
-      return { unlocked }
+      return { unlocked: unlockedBadgeTypes }
     } catch (error) {
       handleServiceError(this.logger, error, {
         service: BadgesService.name,
@@ -46,110 +58,121 @@ export class BadgesService {
   }
 
   private async tryUnlockBadge(
-    tx: TxClient,
+    txClient: TxClient,
     userId: string,
-    def: BadgeDefinition,
+    badgeDefinition: BadgeDefinition,
     isoWeek: string,
     currentStreak: number,
     eventAt: Date,
   ): Promise<boolean> {
-    if (def.type === BadgeType.HOT_STREAK) {
-      return this.tryUnlockHotStreak(tx, userId, def, currentStreak, eventAt)
+    if (badgeDefinition.type === BadgeType.HOT_STREAK) {
+      return this.tryUnlockHotStreak(txClient, userId, badgeDefinition, currentStreak, eventAt)
     }
 
-    if (await this.isAlreadyAwardedForPeriod(tx, userId, def, isoWeek)) {
+    if (await this.isAlreadyAwardedForPeriod(txClient, userId, badgeDefinition, isoWeek)) {
       return false
     }
 
-    const weekKey = def.windowType === 'iso_week' ? isoWeek : null
+    const weekKey =
+      badgeDefinition.windowType === BadgeWindowType.ISO_WEEK ? isoWeek : null
 
-    let progress: { id: string; currentCount: number; isCompleted: boolean }
+    let badgeProgressRecord: { id: string; currentCount: number; isCompleted: boolean }
 
     if (weekKey !== null) {
-      progress = await this.badgesRepo.upsertBadgeProgress(
-        tx,
+      badgeProgressRecord = await this.badgesRepo.upsertBadgeProgress(
+        txClient,
         userId,
-        def.type,
+        badgeDefinition.type,
         weekKey,
-        def.targetCount,
+        badgeDefinition.targetCount,
       )
     } else {
-      const existing = await this.badgesRepo.findBadgeProgress(tx, userId, def.type, null)
-      if (existing) {
-        progress = await this.badgesRepo.updateBadgeProgress(tx, existing.id, {
-          currentCount: existing.currentCount + 1,
+      const existingBadgeProgress = await this.badgesRepo.findBadgeProgress(
+        txClient,
+        userId,
+        badgeDefinition.type,
+        null,
+      )
+      if (existingBadgeProgress) {
+        badgeProgressRecord = await this.badgesRepo.updateBadgeProgress(txClient, existingBadgeProgress.id, {
+          currentCount: existingBadgeProgress.currentCount + 1,
         })
       } else {
-        progress = await this.badgesRepo.createBadgeProgress(tx, {
+        badgeProgressRecord = await this.badgesRepo.createBadgeProgress(txClient, {
           userId,
-          badgeType: def.type,
+          badgeType: badgeDefinition.type,
           currentCount: 1,
-          targetCount: def.targetCount,
+          targetCount: badgeDefinition.targetCount,
           weekKey: null,
         })
       }
     }
 
-    if (!def.evaluate(progress.currentCount)) {
+    if (!badgeDefinition.evaluate(badgeProgressRecord.currentCount)) {
       return false
     }
 
-    if (await this.isAlreadyAwardedForPeriod(tx, userId, def, isoWeek)) {
+    if (await this.isAlreadyAwardedForPeriod(txClient, userId, badgeDefinition, isoWeek)) {
       return false
     }
 
-    await this.badgesRepo.createBadgeAward(tx, userId, def.type, weekKey, eventAt)
-    await this.badgesRepo.updateBadgeProgress(tx, progress.id, { isCompleted: true })
+    await this.badgesRepo.createBadgeAward(txClient, userId, badgeDefinition.type, weekKey, eventAt)
+    await this.badgesRepo.updateBadgeProgress(txClient, badgeProgressRecord.id, { isCompleted: true })
     return true
   }
 
   private async tryUnlockHotStreak(
-    tx: TxClient,
+    txClient: TxClient,
     userId: string,
-    def: BadgeDefinition,
+    badgeDefinition: BadgeDefinition,
     currentStreak: number,
     eventAt: Date,
   ): Promise<boolean> {
-    if (currentStreak !== def.targetCount) return false
+    if (currentStreak !== badgeDefinition.targetCount) return false
 
-    if (await this.badgesRepo.hasHotStreakAwardInCurrentStreak(tx, userId, currentStreak, eventAt)) {
+    if (await this.badgesRepo.hasHotStreakAwardInCurrentStreak(txClient, userId, currentStreak, eventAt)) {
       return false
     }
 
-    const existing = await this.badgesRepo.findBadgeProgress(tx, userId, def.type, null)
-    if (existing) {
-      await this.badgesRepo.updateBadgeProgress(tx, existing.id, {
+    const existingBadgeProgress = await this.badgesRepo.findBadgeProgress(
+      txClient,
+      userId,
+      badgeDefinition.type,
+      null,
+    )
+    if (existingBadgeProgress) {
+      await this.badgesRepo.updateBadgeProgress(txClient, existingBadgeProgress.id, {
         currentCount: currentStreak,
       })
     } else {
-      await this.badgesRepo.createBadgeProgress(tx, {
+      await this.badgesRepo.createBadgeProgress(txClient, {
         userId,
-        badgeType: def.type,
+        badgeType: badgeDefinition.type,
         currentCount: currentStreak,
-        targetCount: def.targetCount,
+        targetCount: badgeDefinition.targetCount,
         weekKey: null,
       })
     }
 
-    await this.badgesRepo.createBadgeAward(tx, userId, def.type, null, eventAt)
+    await this.badgesRepo.createBadgeAward(txClient, userId, badgeDefinition.type, null, eventAt)
     return true
   }
 
   private async isAlreadyAwardedForPeriod(
-    tx: TxClient,
+    txClient: TxClient,
     userId: string,
-    def: BadgeDefinition,
+    badgeDefinition: BadgeDefinition,
     isoWeek: string,
   ): Promise<boolean> {
-    switch (def.repeatPolicy) {
-      case 'once':
-        return this.badgesRepo.hasBadgeAward(tx, userId, def.type)
-      case 'per_iso_week':
-        return this.badgesRepo.hasBadgeAwardForWeek(tx, userId, def.type, isoWeek)
-      case 'repeatable_lifetime':
+    switch (badgeDefinition.repeatPolicy) {
+      case BadgeRepeatPolicy.ONCE:
+        return this.badgesRepo.hasBadgeAward(txClient, userId, badgeDefinition.type)
+      case BadgeRepeatPolicy.PER_ISO_WEEK:
+        return this.badgesRepo.hasBadgeAwardForWeek(txClient, userId, badgeDefinition.type, isoWeek)
+      case BadgeRepeatPolicy.REPEATABLE_LIFETIME:
         return false
       default:
-        return this.badgesRepo.hasBadgeAward(tx, userId, def.type)
+        return this.badgesRepo.hasBadgeAward(txClient, userId, badgeDefinition.type)
     }
   }
 }

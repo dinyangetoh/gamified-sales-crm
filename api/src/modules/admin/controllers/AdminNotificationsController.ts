@@ -31,7 +31,7 @@ export class AdminNotificationsController {
     const fromDate = from ? new Date(from) : undefined
     const toDate = to ? new Date(to) : undefined
 
-    const res = await this.notificationsService.listNotificationLogs({
+    const notificationLogResponse = await this.notificationsService.listNotificationLogs({
       type,
       from: fromDate,
       to: toDate,
@@ -40,10 +40,10 @@ export class AdminNotificationsController {
     })
 
     return {
-      ...res,
-      items: res.items.map((i: any) => ({
-        ...i,
-        metadata: i.metadata ?? undefined,
+      ...notificationLogResponse,
+      items: notificationLogResponse.items.map((notificationItem: any) => ({
+        ...notificationItem,
+        metadata: notificationItem.metadata ?? undefined,
       })),
     } as NotificationLogResponseDto
   }

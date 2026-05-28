@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { User, UserStats, BadgeType } from '@db'
 import { getEventTypeDisplayName } from '../../common/labels/eventTypeLabels'
-import { BADGE_DEFINITIONS, getBadgeDefinition } from '../badges/badgeDefinitions'
+import { BADGE_DEFINITIONS, BadgeRepeatPolicy, getBadgeDefinition } from '../badges/badgeDefinitions'
 import { currentIsoWeek } from '../../common/helpers/scoring/isoWeekHelper'
 import { UsersRepository } from './UsersRepository'
 import { handleServiceError } from '../../common/errors/ServiceErrorHandler'
@@ -81,18 +81,18 @@ export class UsersService {
 
   async listSalesRepSummaries(): Promise<SalesRepSummary[]> {
     try {
-      const users = await this.usersRepo.findSalesReps()
-      return users.map((u) => ({
-        userId: u.id,
-        name: u.name,
-        email: u.email,
-        totalXP: u.stats?.totalXP ?? 0,
-        level: u.stats?.level ?? 1,
-        currentStreak: u.stats?.currentStreak ?? 0,
-        longestStreak: u.stats?.longestStreak ?? 0,
-        badgeCount: new Set(u.badgeAwards.map((b) => b.badgeType)).size,
-        eventCount: u.eventCount ?? 0,
-        lastActivityAt: u.stats?.lastActivityDate ?? null,
+      const salesRepUsers = await this.usersRepo.findSalesReps()
+      return salesRepUsers.map((salesRepUser) => ({
+        userId: salesRepUser.id,
+        name: salesRepUser.name,
+        email: salesRepUser.email,
+        totalXP: salesRepUser.stats?.totalXP ?? 0,
+        level: salesRepUser.stats?.level ?? 1,
+        currentStreak: salesRepUser.stats?.currentStreak ?? 0,
+        longestStreak: salesRepUser.stats?.longestStreak ?? 0,
+        badgeCount: new Set(salesRepUser.badgeAwards.map((badgeAward) => badgeAward.badgeType)).size,
+        eventCount: salesRepUser.eventCount ?? 0,
+        lastActivityAt: salesRepUser.stats?.lastActivityDate ?? null,
       }))
     } catch (error) {
       handleServiceError(this.logger, error, {
@@ -111,15 +111,17 @@ export class UsersService {
       const earned = await this.usersRepo.findBadgeAwards(userId)
       const inProgress = await this.usersRepo.findBadgeProgressInProgress(userId)
 
-    const earnedTypes = new Set(earned.map((b) => b.badgeType))
-    const earnedBadges = this.aggregateEarnedBadges(earned)
-    const inProgressBadges = this.aggregateInProgressBadges(
-      inProgress,
-      currentIsoWeek(),
-      earnedTypes,
-    )
-    const inProgressTypes = new Set(inProgressBadges.map((b) => b.type as BadgeType))
-    const lockedBadges = this.buildLockedBadges(earnedTypes, inProgressTypes)
+      const earnedBadgeTypes = new Set(earned.map((badgeAward) => badgeAward.badgeType))
+      const earnedBadges = this.aggregateEarnedBadges(earned)
+      const inProgressBadges = this.aggregateInProgressBadges(
+        inProgress,
+        currentIsoWeek(),
+        earnedBadgeTypes,
+      )
+      const inProgressBadgeTypes = new Set(
+        inProgressBadges.map((inProgressBadge) => inProgressBadge.type as BadgeType),
+      )
+      const lockedBadges = this.buildLockedBadges(earnedBadgeTypes, inProgressBadgeTypes)
 
       return {
         userId: user.id,
@@ -152,22 +154,25 @@ export class UsersService {
     try {
       const [entries, total] = await this.usersRepo.findTimeline(userId, limit, offset)
 
-    const timeline = entries.map((e) => {
-      const badgeDef = e.badgeType ? getBadgeDefinition(e.badgeType) : null
+      const timeline = entries.map((timelineEntry) => {
+        const badgeDefinition = timelineEntry.badgeType
+          ? getBadgeDefinition(timelineEntry.badgeType)
+          : null
       return {
-        id: e.id,
-        type: e.type,
-        badgeType: e.badgeType,
-        displayName: badgeDef?.displayName,
-        iconUrl: badgeDef?.iconUrl,
-        pointsSnapshot: e.pointsSnapshot,
-        xpSnapshot: e.xpSnapshot,
-        levelSnapshot: e.levelSnapshot,
-        weekKey: e.weekKey,
-        metadata: e.metadata,
-        createdAt: e.createdAt,
+          id: timelineEntry.id,
+          type: timelineEntry.type,
+          badgeType: timelineEntry.badgeType,
+          displayName: badgeDefinition?.displayName,
+          iconUrl: badgeDefinition?.iconUrl,
+          pointsSnapshot: timelineEntry.pointsSnapshot,
+          xpSnapshot: timelineEntry.xpSnapshot,
+          levelSnapshot: timelineEntry.levelSnapshot,
+          weekKey: timelineEntry.weekKey,
+          metadata: timelineEntry.metadata,
+          createdAt: timelineEntry.createdAt,
+        }
       }
-    })
+      )
 
       return { timeline, total, limit, offset }
     } catch (error) {
@@ -190,9 +195,9 @@ export class UsersService {
       const offset = params.offset ?? 0
       const [events, total] = await this.usersRepo.findEventFeed(userId, { ...params, limit, offset })
       return {
-        events: events.map((e) => ({
-          ...e,
-          eventTypeDisplayName: getEventTypeDisplayName(e.eventType),
+        events: events.map((eventRecord) => ({
+          ...eventRecord,
+          eventTypeDisplayName: getEventTypeDisplayName(eventRecord.eventType),
         })),
         total,
         limit,
@@ -218,17 +223,19 @@ export class UsersService {
       byType.set(award.badgeType, list)
     }
 
-    return Array.from(byType.entries()).map(([type, rows]) => {
-      const def = getBadgeDefinition(type)!
-      const latest = rows.reduce((a, b) => (a.awardedAt > b.awardedAt ? a : b))
+    return Array.from(byType.entries()).map(([badgeType, badgeAwardRows]) => {
+      const badgeDefinition = getBadgeDefinition(badgeType)!
+      const latestBadgeAward = badgeAwardRows.reduce((currentLatest, nextAward) =>
+        currentLatest.awardedAt > nextAward.awardedAt ? currentLatest : nextAward,
+      )
       return {
-        type,
-        displayName: def.displayName,
-        description: def.description,
-        iconUrl: def.iconUrl,
-        awardCount: rows.length,
-        latestAwardedAt: latest.awardedAt,
-        awardedAt: latest.awardedAt,
+        type: badgeType,
+        displayName: badgeDefinition.displayName,
+        description: badgeDefinition.description,
+        iconUrl: badgeDefinition.iconUrl,
+        awardCount: badgeAwardRows.length,
+        latestAwardedAt: latestBadgeAward.awardedAt,
+        awardedAt: latestBadgeAward.awardedAt,
       }
     })
   }
@@ -241,8 +248,11 @@ export class UsersService {
     const byType = new Map<BadgeType, BadgeProgressRow>()
 
     for (const row of progressRows) {
-      const def = getBadgeDefinition(row.badgeType)
-      if (def?.repeatPolicy === 'once' && earnedTypes.has(row.badgeType)) {
+      const badgeDefinition = getBadgeDefinition(row.badgeType)
+      if (
+        badgeDefinition?.repeatPolicy === BadgeRepeatPolicy.ONCE &&
+        earnedTypes.has(row.badgeType)
+      ) {
         continue
       }
 
@@ -255,17 +265,17 @@ export class UsersService {
       byType.set(row.badgeType, this.pickPreferredProgressRow(existing, row, week))
     }
 
-    return Array.from(byType.values()).map((p) => {
-      const def = getBadgeDefinition(p.badgeType)!
+    return Array.from(byType.values()).map((badgeProgress) => {
+      const badgeDefinition = getBadgeDefinition(badgeProgress.badgeType)!
       return {
-        type: p.badgeType,
-        displayName: def.displayName,
-        description: def.description,
-        iconUrl: def.iconUrl,
-        currentCount: p.currentCount,
-        targetCount: p.targetCount,
-        progressPercent: Math.round((p.currentCount / p.targetCount) * 100),
-        weekKey: p.weekKey,
+        type: badgeProgress.badgeType,
+        displayName: badgeDefinition.displayName,
+        description: badgeDefinition.description,
+        iconUrl: badgeDefinition.iconUrl,
+        currentCount: badgeProgress.currentCount,
+        targetCount: badgeProgress.targetCount,
+        progressPercent: Math.round((badgeProgress.currentCount / badgeProgress.targetCount) * 100),
+        weekKey: badgeProgress.weekKey,
       }
     })
   }
@@ -281,12 +291,13 @@ export class UsersService {
 
   private buildLockedBadges(earnedTypes: Set<BadgeType>, inProgressTypes: Set<BadgeType>) {
     return BADGE_DEFINITIONS.filter(
-      (d) => !earnedTypes.has(d.type) && !inProgressTypes.has(d.type),
-    ).map((d) => ({
-      type: d.type,
-      displayName: d.displayName,
-      description: d.description,
-      iconUrl: d.iconUrl,
+      (badgeDefinition) =>
+        !earnedTypes.has(badgeDefinition.type) && !inProgressTypes.has(badgeDefinition.type),
+    ).map((badgeDefinition) => ({
+      type: badgeDefinition.type,
+      displayName: badgeDefinition.displayName,
+      description: badgeDefinition.description,
+      iconUrl: badgeDefinition.iconUrl,
       locked: true,
     }))
   }

@@ -1,6 +1,15 @@
 import { BadgeType, EventType } from '@db'
 
-export type BadgeRepeatPolicy = 'once' | 'per_iso_week' | 'repeatable_lifetime'
+export enum BadgeWindowType {
+  LIFETIME = 'lifetime',
+  ISO_WEEK = 'iso_week',
+}
+
+export enum BadgeRepeatPolicy {
+  ONCE = 'once',
+  PER_ISO_WEEK = 'per_iso_week',
+  REPEATABLE_LIFETIME = 'repeatable_lifetime',
+}
 
 export interface BadgeDefinition {
   type: BadgeType
@@ -8,7 +17,7 @@ export interface BadgeDefinition {
   description: string
   iconUrl: string
   targetCount: number
-  windowType: 'lifetime' | 'iso_week'
+  windowType: BadgeWindowType
   repeatPolicy: BadgeRepeatPolicy
   eventTypes: EventType[]
   evaluate: (currentCount: number) => boolean
@@ -21,8 +30,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Close your first deal.',
     iconUrl: '/badges/first-win.svg',
     targetCount: 1,
-    windowType: 'lifetime',
-    repeatPolicy: 'once',
+    windowType: BadgeWindowType.LIFETIME,
+    repeatPolicy: BadgeRepeatPolicy.ONCE,
     eventTypes: [EventType.DEAL_WON],
     evaluate: (count) => count >= 1,
   },
@@ -32,8 +41,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Close 3 deals in a single week.',
     iconUrl: '/badges/consistent-closer.svg',
     targetCount: 3,
-    windowType: 'iso_week',
-    repeatPolicy: 'per_iso_week',
+    windowType: BadgeWindowType.ISO_WEEK,
+    repeatPolicy: BadgeRepeatPolicy.PER_ISO_WEEK,
     eventTypes: [EventType.DEAL_WON],
     evaluate: (count) => count >= 3,
   },
@@ -43,8 +52,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Advance 5 deals through stages in a single week.',
     iconUrl: '/badges/pipeline-builder.svg',
     targetCount: 5,
-    windowType: 'iso_week',
-    repeatPolicy: 'per_iso_week',
+    windowType: BadgeWindowType.ISO_WEEK,
+    repeatPolicy: BadgeRepeatPolicy.PER_ISO_WEEK,
     eventTypes: [EventType.STAGE_ADVANCED],
     evaluate: (count) => count >= 5,
   },
@@ -54,8 +63,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Log activity 5 days in a row.',
     iconUrl: '/badges/hot-streak.svg',
     targetCount: 5,
-    windowType: 'lifetime',
-    repeatPolicy: 'repeatable_lifetime',
+    windowType: BadgeWindowType.LIFETIME,
+    repeatPolicy: BadgeRepeatPolicy.REPEATABLE_LIFETIME,
     eventTypes: [],
     evaluate: (count) => count >= 5,
   },
@@ -65,8 +74,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Finish #1 on the leaderboard at end of week.',
     iconUrl: '/badges/top-of-week.svg',
     targetCount: 1,
-    windowType: 'iso_week',
-    repeatPolicy: 'per_iso_week',
+    windowType: BadgeWindowType.ISO_WEEK,
+    repeatPolicy: BadgeRepeatPolicy.PER_ISO_WEEK,
     eventTypes: [],
     evaluate: (count) => count >= 1,
   },
@@ -76,8 +85,8 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     description: 'Bounce back with a better week after a down week.',
     iconUrl: '/badges/comeback-kid.svg',
     targetCount: 1,
-    windowType: 'iso_week',
-    repeatPolicy: 'per_iso_week',
+    windowType: BadgeWindowType.ISO_WEEK,
+    repeatPolicy: BadgeRepeatPolicy.PER_ISO_WEEK,
     eventTypes: [],
     evaluate: (count) => count >= 1,
   },

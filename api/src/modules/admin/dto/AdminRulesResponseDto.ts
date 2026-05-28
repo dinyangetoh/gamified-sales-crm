@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { BadgeWindowType } from '../../badges/badgeDefinitions'
 
 export class ScoringRuleDto {
   @ApiProperty()
@@ -61,8 +62,8 @@ export class BadgeDefinitionDto {
   @ApiProperty()
   targetCount!: number
 
-  @ApiProperty()
-  windowType!: string
+  @ApiProperty({ enum: BadgeWindowType, enumName: 'BadgeWindowType' })
+  windowType!: BadgeWindowType
 }
 
 export class AdminRulesResponseDto {

@@ -36,9 +36,11 @@ Auth: JWT Bearer token obtained from `POST /auth/login`.
 
 - Shared service contracts must be defined in files named `I<ServiceName>.ts` (example: `ILeaderboardService.ts`).
 - Shared repository/domain model contracts must be defined in files named `<Domain>Model.ts` (example: `LeaderboardModel.ts`).
+- For reusable domain constant sets (for example `windowType`, `repeatPolicy`), define and consume enums instead of repeated string literals.
 - Do not declare inline `interface`/`type` definitions inside service or processor implementation files.
 - Public methods in services and repositories must declare explicit return types.
 - Keep services and repositories lean; orchestration and data access responsibilities should stay focused.
+- Use descriptive variable names for domain data (`txClient`, `badgeDefinition`, `eventContext`) and avoid ambiguous short names (`tx`, `def`, `ctx`, `res`) unless in trivial local loops.
 - Use one top-level try/catch per public service method (avoid multiple nested try/catch blocks).
 - For cache pass-through paths, prefer graceful fallback (`.catch` warning + continue) over dedicated try/catch blocks.
 - In catch blocks, log structured context (`service`, `method`, `operation`, relevant identifiers) and map to safe Nest exceptions for HTTP via `handleServiceError`.

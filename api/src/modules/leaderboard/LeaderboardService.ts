@@ -33,22 +33,24 @@ export class LeaderboardService {
   async getWeeklyLeaderboard(isoWeek?: string): Promise<WeeklyLeaderboardResult> {
     try {
       const week = isoWeek ?? currentIsoWeek()
-      const prevWeek = previousIsoWeek(week)
+      const previousWeek = previousIsoWeek(week)
       const cacheKey = CacheKey.leaderboard(week)
 
       const cached = (await this.cache.get(cacheKey)) as WeeklyLeaderboardResult | null
       if (cached) return { ...cached, fromCache: true }
 
-      const [weekStats, prevWeekStats, { levels }] = await Promise.all([
+      const [weeklyStats, previousWeekStats, { levels }] = await Promise.all([
         this.leaderboardRepo.findWeeklyStats(week),
-        this.leaderboardRepo.findWeeklyStats(prevWeek),
+        this.leaderboardRepo.findWeeklyStats(previousWeek),
         this.scoringConfigService.getConfig(),
       ])
 
-      const prevRankByUserId = new Map(prevWeekStats.map((ws, idx) => [ws.userId, idx + 1]))
+      const previousRankByUserId = new Map(
+        previousWeekStats.map((weeklyStatRecord, index) => [weeklyStatRecord.userId, index + 1]),
+      )
 
-      const entries = weekStats.map((ws, idx) =>
-        this.buildWeeklyEntry(ws, idx, weekStats, prevRankByUserId, levels),
+      const entries = weeklyStats.map((weeklyStatRecord, index) =>
+        this.buildWeeklyEntry(weeklyStatRecord, index, weeklyStats, previousRankByUserId, levels),
       )
 
       const result = { week, generatedAt: new Date(), fromCache: false, entries }
@@ -71,12 +73,14 @@ export class LeaderboardService {
       const cached = (await this.cache.get(cacheKey)) as AllTimeLeaderboardResult | null
       if (cached) return { ...cached, fromCache: true }
 
-      const [allStats, { levels }] = await Promise.all([
+      const [allTimeStats, { levels }] = await Promise.all([
         this.leaderboardRepo.findAllUserStats(),
         this.scoringConfigService.getConfig(),
       ])
 
-      const entries = allStats.map((s, idx) => this.buildAllTimeEntry(s, idx, allStats, levels))
+      const entries = allTimeStats.map((allTimeStatRecord, index) =>
+        this.buildAllTimeEntry(allTimeStatRecord, index, allTimeStats, levels),
+      )
 
       const result = { generatedAt: new Date(), fromCache: false, entries }
       await this.cache.set(cacheKey, result, CACHE_TTL_LEADERBOARD)
@@ -92,31 +96,33 @@ export class LeaderboardService {
   }
 
   private buildWeeklyEntry(
-    ws: Awaited<ReturnType<LeaderboardRepository['findWeeklyStats']>>[number],
-    idx: number,
-    weekStats: Awaited<ReturnType<LeaderboardRepository['findWeeklyStats']>>,
-    prevRankByUserId: Map<string, number>,
+    weeklyStatRecord: Awaited<ReturnType<LeaderboardRepository['findWeeklyStats']>>[number],
+    index: number,
+    weeklyStats: Awaited<ReturnType<LeaderboardRepository['findWeeklyStats']>>,
+    previousRankByUserId: Map<string, number>,
     levels: ScoringConfig['levels'],
   ): WeeklyLeaderboardEntry {
-    const rank = idx + 1
-    const lastWeekRank = prevRankByUserId.get(ws.userId)
+    const rank = index + 1
+    const lastWeekRank = previousRankByUserId.get(weeklyStatRecord.userId)
     const rankDelta = lastWeekRank !== undefined ? lastWeekRank - rank : undefined
-    const above = weekStats[idx - 1]
-    const pointsGap = above ? above.weekPoints - ws.weekPoints : 0
-    const totalXP = ws.user.stats?.totalXP ?? 0
-    const level = ws.user.stats?.level ?? 1
+    const aboveRankedWeeklyStat = weeklyStats[index - 1]
+    const pointsGap = aboveRankedWeeklyStat
+      ? aboveRankedWeeklyStat.weekPoints - weeklyStatRecord.weekPoints
+      : 0
+    const totalXP = weeklyStatRecord.user.stats?.totalXP ?? 0
+    const level = weeklyStatRecord.user.stats?.level ?? 1
     const levelLabel = deriveLevelLabel(totalXP, levels)
-    const badges = dedupeBadgeAwards(ws.user.badgeAwards)
+    const badges = dedupeBadgeAwards(weeklyStatRecord.user.badgeAwards)
 
     return {
       rank,
-      userId: ws.userId,
-      name: ws.user.name,
-      weekPoints: ws.weekPoints,
+      userId: weeklyStatRecord.userId,
+      name: weeklyStatRecord.user.name,
+      weekPoints: weeklyStatRecord.weekPoints,
       totalXP,
       level,
       levelLabel,
-      currentStreak: ws.user.stats?.currentStreak ?? 0,
+      currentStreak: weeklyStatRecord.user.stats?.currentStreak ?? 0,
       pointsGap,
       lastWeekRank,
       rankDelta,
@@ -125,25 +131,27 @@ export class LeaderboardService {
   }
 
   private buildAllTimeEntry(
-    s: Awaited<ReturnType<LeaderboardRepository['findAllUserStats']>>[number],
-    idx: number,
+    allTimeStatRecord: Awaited<ReturnType<LeaderboardRepository['findAllUserStats']>>[number],
+    index: number,
     allStats: Awaited<ReturnType<LeaderboardRepository['findAllUserStats']>>,
     levels: ScoringConfig['levels'],
   ): AllTimeLeaderboardEntry {
-    const above = allStats[idx - 1]
-    const pointsGap = above ? above.totalXP - s.totalXP : 0
-    const levelLabel = deriveLevelLabel(s.totalXP, levels)
-    const badges = dedupeBadgeAwards(s.user.badgeAwards)
+    const aboveRankedAllTimeStat = allStats[index - 1]
+    const pointsGap = aboveRankedAllTimeStat
+      ? aboveRankedAllTimeStat.totalXP - allTimeStatRecord.totalXP
+      : 0
+    const levelLabel = deriveLevelLabel(allTimeStatRecord.totalXP, levels)
+    const badges = dedupeBadgeAwards(allTimeStatRecord.user.badgeAwards)
 
     return {
-      rank: idx + 1,
-      userId: s.userId,
-      name: s.user.name,
-      totalXP: s.totalXP,
-      totalPoints: s.totalPoints,
-      level: s.level,
+      rank: index + 1,
+      userId: allTimeStatRecord.userId,
+      name: allTimeStatRecord.user.name,
+      totalXP: allTimeStatRecord.totalXP,
+      totalPoints: allTimeStatRecord.totalPoints,
+      level: allTimeStatRecord.level,
       levelLabel,
-      currentStreak: s.currentStreak,
+      currentStreak: allTimeStatRecord.currentStreak,
       pointsGap,
       badges,
     }

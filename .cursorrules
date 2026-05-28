@@ -2,9 +2,11 @@
 
 - Service shared contracts must live in `I<ServiceName>.ts`.
 - Repository/domain contracts must live in `<Domain>Model.ts`.
+- Reusable domain constant sets must use shared enums instead of repeated string literals.
 - No inline `interface`/`type` declarations inside service or processor implementation files.
 - Public service/repository methods must have explicit return types.
 - Keep services/repositories lean and responsibility-focused.
+- Use descriptive camelCase variable names (`txClient`, `badgeDefinition`, `eventContext`) and avoid ambiguous short names (`tx`, `def`, `ctx`, `res`) for domain logic.
 - Use one top-level try/catch per public service method.
 - Avoid nested try/catch blocks in the same method.
 - For cache pass-through paths, use graceful fallback (`.catch` + warn) instead of dedicated try/catch.

@@ -41,12 +41,14 @@ export class NotificationsService implements OnModuleInit {
       const user = await this.notificationsRepo.findUserById(userId)
       if (!user) return
 
-      const def = BADGE_DEFINITIONS.find((d) => d.type === badgeType)
+      const badgeDefinition = BADGE_DEFINITIONS.find(
+        (candidateBadgeDefinition) => candidateBadgeDefinition.type === badgeType,
+      )
 
       await this.notificationsRepo.createNotificationLog({
         userId,
         type: 'BADGE_UNLOCK',
-        metadata: { badgeType, displayName: def?.displayName },
+        metadata: { badgeType, displayName: badgeDefinition?.displayName },
       })
 
       if (!this.emailEnabled || !this.resend) {
@@ -57,8 +59,8 @@ export class NotificationsService implements OnModuleInit {
       await this.resend.emails.send({
         from: 'gamification@yourdomain.com',
         to: user.email,
-        subject: `🏆 You earned the "${def?.displayName}" badge!`,
-        html: `<p>Congratulations ${user.name}! You just unlocked the <strong>${def?.displayName}</strong> badge.</p><p>${def?.description}</p>`,
+        subject: `🏆 You earned the "${badgeDefinition?.displayName}" badge!`,
+        html: `<p>Congratulations ${user.name}! You just unlocked the <strong>${badgeDefinition?.displayName}</strong> badge.</p><p>${badgeDefinition?.description}</p>`,
       })
     } catch (error) {
       handleServiceError(this.logger, error, {
@@ -181,21 +183,23 @@ export class NotificationsService implements OnModuleInit {
     badgeType: BadgeType = 'CONSISTENT_CLOSER' as BadgeType,
   ): Promise<{ accepted: boolean }> {
     const effectiveUserId = params.userId ?? params.actorUserId
-    const def = BADGE_DEFINITIONS.find((d) => d.type === badgeType)
+    const badgeDefinition = BADGE_DEFINITIONS.find(
+      (candidateBadgeDefinition) => candidateBadgeDefinition.type === badgeType,
+    )
 
     await this.notificationsRepo.createNotificationLog({
       userId: effectiveUserId,
       type: params.templateId,
-      metadata: { badgeType, displayName: def?.displayName, toEmail: params.toEmail },
+      metadata: { badgeType, displayName: badgeDefinition?.displayName, toEmail: params.toEmail },
     })
 
     const sent = await this.sendEmailIfEnabled(
       params.toEmail,
       params.templateId,
-      `🏆 You earned the "${def?.displayName ?? badgeType}" badge!`,
+      `🏆 You earned the "${badgeDefinition?.displayName ?? badgeType}" badge!`,
       `<p>Congratulations ${user.name}! You just unlocked the <strong>${
-        def?.displayName ?? badgeType
-      }</strong> badge.</p><p>${def?.description ?? ''}</p>`,
+        badgeDefinition?.displayName ?? badgeType
+      }</strong> badge.</p><p>${badgeDefinition?.description ?? ''}</p>`,
     )
 
     return { accepted: sent ?? true }

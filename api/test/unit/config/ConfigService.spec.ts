@@ -15,6 +15,8 @@ describe('ConfigService', () => {
       displayName: expect.any(String),
       shortName: expect.any(String),
     })
-    expect(options.find((o) => o.value === 'DEAL_WON')?.displayName).toBe('Deal Won')
+    expect(options.find((eventTypeOption) => eventTypeOption.value === 'DEAL_WON')?.displayName).toBe(
+      'Deal Won',
+    )
   })
 })

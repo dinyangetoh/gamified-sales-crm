@@ -10,20 +10,24 @@ export type BadgeDisplayDto = {
 export function dedupeBadgeAwards(
   awards: Array<{ badgeType: BadgeType }>,
 ): BadgeDisplayDto[] {
-  const seen = new Set<BadgeType>()
-  const badges: BadgeDisplayDto[] = []
-  for (const b of awards) {
-    if (seen.has(b.badgeType)) continue
-    seen.add(b.badgeType)
-    const def = getBadgeDefinition(b.badgeType)!
-    badges.push({ type: b.badgeType, displayName: def.displayName, iconUrl: def.iconUrl })
+  const seenBadgeTypes = new Set<BadgeType>()
+  const badgeDisplayDtos: BadgeDisplayDto[] = []
+  for (const badgeAward of awards) {
+    if (seenBadgeTypes.has(badgeAward.badgeType)) continue
+    seenBadgeTypes.add(badgeAward.badgeType)
+    const badgeDefinition = getBadgeDefinition(badgeAward.badgeType)!
+    badgeDisplayDtos.push({
+      type: badgeAward.badgeType,
+      displayName: badgeDefinition.displayName,
+      iconUrl: badgeDefinition.iconUrl,
+    })
   }
-  return badges
+  return badgeDisplayDtos
 }
 
 export function mapUnlockedBadgesToDisplay(types: BadgeType[]): BadgeDisplayDto[] {
   return types.map((type) => {
-    const def = getBadgeDefinition(type)!
-    return { type, displayName: def.displayName, iconUrl: def.iconUrl }
+    const badgeDefinition = getBadgeDefinition(type)!
+    return { type, displayName: badgeDefinition.displayName, iconUrl: badgeDefinition.iconUrl }
   })
 }
