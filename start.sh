@@ -16,22 +16,22 @@
 
 set -euo pipefail
 
-# ── Colours (ANSI-C quoting — works on bash 3.2+ / macOS) ───────────────────
+# ── Colours (ANSI-C quoting — bash 3.2+ / macOS safe) ───────────────────────
 BOLD=$'\033[1m'
 DIM=$'\033[2m'
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'
 YELLOW=$'\033[1;33m'
 CYAN=$'\033[0;36m'
-RESET=$'\033[0m'
+NC=$'\033[0m'  # No Colour / Reset
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-log()  { printf "%s[Rally]%s %s\n" "${BOLD}${CYAN}" "${RESET}" "$*"; }
-ok()   { printf "  %s✓%s %s\n" "${GREEN}" "${RESET}" "$*"; }
-warn() { printf "  %s⚠%s %s\n" "${YELLOW}" "${RESET}" "$*"; }
-err()  { printf "  %s✗ %s%s\n" "${RED}" "$*" "${RESET}" >&2; }
-dim()  { printf "  %s%s%s\n" "${DIM}" "$*" "${RESET}"; }
+log()  { printf "${BOLD}${CYAN}[Rally]${NC} %s\n" "$*"; }
+ok()   { printf "  ${GREEN}✓${NC} %s\n" "$*"; }
+warn() { printf "  ${YELLOW}⚠${NC} %s\n" "$*"; }
+err()  { printf "  ${RED}✗ %s${NC}\n" "$*" >&2; }
+dim()  { printf "  ${DIM}%s${NC}\n" "$*"; }
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
 SEED=false
@@ -40,16 +40,15 @@ STOP=false
 
 for arg in "$@"; do
   case $arg in
-    --seed)  SEED=true ;;
-    --reset) RESET_DATA=true ;;
-    --stop)  STOP=true ;;
+    --seed)   SEED=true ;;
+    --reset)  RESET_DATA=true ;;
+    --stop)   STOP=true ;;
     --help|-h)
-      echo "Usage: ./start.sh [--seed] [--reset] [--stop]"
-      echo ""
-      echo "  (no flags)  Start infrastructure + API + Web"
-      echo "  --seed      Run migrations + seed demo data before starting (first run)"
-      echo "  --reset     Wipe gamification data, re-seed, then start"
-      echo "  --stop      Stop Docker infrastructure and exit"
+      printf "Usage: ./start.sh [--seed] [--reset] [--stop]\n\n"
+      printf "  (no flags)  Start infrastructure + API + Web\n"
+      printf "  --seed      Run migrations + seed demo data before starting (first run)\n"
+      printf "  --reset     Wipe gamification data, re-seed, then start\n"
+      printf "  --stop      Stop Docker infrastructure and exit\n"
       exit 0
       ;;
     *)
@@ -64,8 +63,7 @@ log "Checking prerequisites..."
 
 check_cmd() {
   if ! command -v "$1" &>/dev/null; then
-    err "Required tool not found: $1"
-    printf "  Install it and try again.\n" >&2
+    err "Required tool not found: $1 — install it and try again."
     exit 1
   fi
   ok "$1 found"
@@ -87,15 +85,15 @@ if [ ! -f "$SCRIPT_DIR/api/.env" ]; then
   if [ -f "$SCRIPT_DIR/api/.env.example" ]; then
     warn "api/.env not found — copying from api/.env.example"
     cp "$SCRIPT_DIR/api/.env.example" "$SCRIPT_DIR/api/.env"
-    ok "api/.env created — edit it if you need custom secrets"
+    ok "api/.env created (edit it if you need custom secrets)"
   else
     err "api/.env not found and no .env.example to copy from"
     exit 1
   fi
 fi
 
-# ── --stop flag ───────────────────────────────────────────────────────────────
-if $STOP; then
+# ── --stop ────────────────────────────────────────────────────────────────────
+if [ "$STOP" = true ]; then
   log "Stopping Docker infrastructure..."
   docker compose -f "$SCRIPT_DIR/docker-compose.dev.yml" down
   ok "Infrastructure stopped"
@@ -104,110 +102,123 @@ fi
 
 # ── Start infrastructure ──────────────────────────────────────────────────────
 log "Starting Docker infrastructure (Postgres + Redis)..."
-docker compose -f "$SCRIPT_DIR/docker-compose.dev.yml" up -d 2>&1 | grep -v "^$" | dim_lines() { while IFS= read -r line; do dim "$line"; done; }
-# Wait for health checks
-for i in $(seq 1 20); do
-  DB_HEALTHY=$(docker compose -f "$SCRIPT_DIR/docker-compose.dev.yml" ps --format json 2>/dev/null \
-    | grep -c '"Health":"healthy"' 2>/dev/null || true)
-  if [ "$DB_HEALTHY" -ge 2 ] 2>/dev/null; then
+docker compose -f "$SCRIPT_DIR/docker-compose.dev.yml" up -d
+
+# Poll until Postgres responds
+log "Waiting for Postgres to be ready..."
+for i in $(seq 1 30); do
+  if docker compose -f "$SCRIPT_DIR/docker-compose.dev.yml" \
+       exec -T db pg_isready -U postgres -q 2>/dev/null; then
     break
   fi
   sleep 1
 done
-ok "Postgres + Redis running"
+ok "Postgres + Redis ready"
 
 # ── Install dependencies ──────────────────────────────────────────────────────
 log "Installing dependencies..."
 
 if [ ! -d "$SCRIPT_DIR/api/node_modules" ]; then
-  dim "Running npm install in api/..."
-  (cd "$SCRIPT_DIR/api" && npm install --silent 2>&1)
+  dim "npm install in api/ ..."
+  (cd "$SCRIPT_DIR/api" && npm install --silent)
 fi
 ok "api/ dependencies ready"
 
 if [ ! -d "$SCRIPT_DIR/web/node_modules" ]; then
-  dim "Running npm install in web/..."
-  (cd "$SCRIPT_DIR/web" && npm install --silent 2>&1)
+  dim "npm install in web/ ..."
+  (cd "$SCRIPT_DIR/web" && npm install --silent)
 fi
 ok "web/ dependencies ready"
 
-# ── First-run / reset seed ────────────────────────────────────────────────────
-if $SEED || $RESET_DATA; then
+# ── Seed (--seed or --reset) ──────────────────────────────────────────────────
+if [ "$SEED" = true ] || [ "$RESET_DATA" = true ]; then
   log "Running database migrations..."
-  (cd "$SCRIPT_DIR/api" && npx prisma migrate deploy 2>&1)
+  (cd "$SCRIPT_DIR/api" && npx prisma migrate deploy)
   ok "Migrations applied"
 
   log "Seeding users + scoring config..."
-  (cd "$SCRIPT_DIR/api" && npm run db:seed 2>&1)
+  (cd "$SCRIPT_DIR/api" && npm run db:seed)
   ok "Base seed complete"
 
   log "Replaying demo events through the scoring engine..."
-  (cd "$SCRIPT_DIR/api" && npm run demo:seed:clean 2>&1)
+  (cd "$SCRIPT_DIR/api" && npm run demo:seed:clean)
   ok "Demo seed complete"
 fi
 
-# ── Cleanup on exit ───────────────────────────────────────────────────────────
+# ── Cleanup on Ctrl+C ─────────────────────────────────────────────────────────
 API_PID=""
 WEB_PID=""
 
 cleanup() {
   printf "\n"
   log "Shutting down..."
-  [ -n "$API_PID" ] && kill "$API_PID" 2>/dev/null && ok "API stopped"
-  [ -n "$WEB_PID" ] && kill "$WEB_PID" 2>/dev/null && ok "Web stopped"
+  if [ -n "$API_PID" ]; then
+    kill "$API_PID" 2>/dev/null || true
+    ok "API stopped"
+  fi
+  if [ -n "$WEB_PID" ]; then
+    kill "$WEB_PID" 2>/dev/null || true
+    ok "Web stopped"
+  fi
   exit 0
 }
 trap cleanup SIGINT SIGTERM
 
 # ── Launch API ────────────────────────────────────────────────────────────────
 log "Starting NestJS API..."
-(cd "$SCRIPT_DIR/api" && npm run start:dev 2>&1 | while IFS= read -r line; do
-  printf "%s[api]%s %s\n" "${CYAN}" "${RESET}" "$line"
-done) &
+(
+  cd "$SCRIPT_DIR/api"
+  npm run start:dev 2>&1 | while IFS= read -r line; do
+    printf "${CYAN}[api]${NC} %s\n" "$line"
+  done
+) &
 API_PID=$!
 
-# ── Wait for API to be ready ──────────────────────────────────────────────────
+# ── Wait for API health ───────────────────────────────────────────────────────
 log "Waiting for API to be ready..."
-READY=false
-for i in $(seq 1 40); do
-  if curl -sf http://localhost:4000/health > /dev/null 2>&1; then
-    READY=true
+API_UP=false
+for i in $(seq 1 60); do
+  if curl -sf http://localhost:4000/health >/dev/null 2>&1; then
+    API_UP=true
     break
   fi
   sleep 1
 done
 
-if $READY; then
-  ok "API is up → http://localhost:4000"
+if [ "$API_UP" = true ]; then
+  ok "API ready → http://localhost:4000"
   ok "Swagger  → http://localhost:4000/api-docs"
 else
-  warn "API health check timed out after 40s — it may still be starting (check logs above)"
+  warn "API did not respond in 60s — check [api] logs above"
 fi
 
 # ── Launch Web ────────────────────────────────────────────────────────────────
 log "Starting Next.js web..."
-(cd "$SCRIPT_DIR/web" && npm run dev 2>&1 | while IFS= read -r line; do
-  printf "%s[web]%s %s\n" "${YELLOW}" "${RESET}" "$line"
-done) &
+(
+  cd "$SCRIPT_DIR/web"
+  npm run dev 2>&1 | while IFS= read -r line; do
+    printf "${YELLOW}[web]${NC} %s\n" "$line"
+  done
+) &
 WEB_PID=$!
 
 # ── Ready banner ──────────────────────────────────────────────────────────────
 sleep 2
 printf "\n"
-printf "%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n" "${BOLD}${GREEN}" "${RESET}"
-printf "%s  Rally is running!%s\n"                            "${BOLD}${GREEN}" "${RESET}"
-printf "%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n" "${BOLD}${GREEN}" "${RESET}"
+printf "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+printf "${BOLD}${GREEN}  Rally is running!${NC}\n"
+printf "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 printf "\n"
-printf "  %sDashboard%s  →  http://localhost:3000\n"  "${CYAN}" "${RESET}"
-printf "  %sAPI%s        →  http://localhost:4000\n"  "${CYAN}" "${RESET}"
-printf "  %sSwagger%s    →  http://localhost:4000/api-docs\n" "${CYAN}" "${RESET}"
-printf "  %sHealth%s     →  http://localhost:4000/health\n"  "${CYAN}" "${RESET}"
+printf "  ${CYAN}Dashboard${NC}  →  http://localhost:3000\n"
+printf "  ${CYAN}API${NC}        →  http://localhost:4000\n"
+printf "  ${CYAN}Swagger${NC}    →  http://localhost:4000/api-docs\n"
+printf "  ${CYAN}Health${NC}     →  http://localhost:4000/health\n"
 printf "\n"
-printf "  %sDemo: alice@demo.com / Demo1234! (rep)%s\n"      "${DIM}" "${RESET}"
-printf "  %s       manager@demo.com / Demo1234! (manager)%s\n" "${DIM}" "${RESET}"
+printf "  ${DIM}Demo: alice@demo.com / Demo1234!  (rep)${NC}\n"
+printf "  ${DIM}       manager@demo.com / Demo1234!  (manager)${NC}\n"
 printf "\n"
-printf "  %sPress Ctrl+C to stop all services%s\n" "${DIM}" "${RESET}"
+printf "  ${DIM}Press Ctrl+C to stop all services${NC}\n"
 printf "\n"
 
-# ── Wait ──────────────────────────────────────────────────────────────────────
+# ── Keep running ──────────────────────────────────────────────────────────────
 wait
