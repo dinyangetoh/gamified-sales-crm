@@ -2,12 +2,24 @@ import { Injectable } from '@nestjs/common'
 import { EventType, TimelineEventType, BadgeType } from '@db'
 import { PrismaService } from '../../../common/prisma/PrismaService'
 import type { TxClient } from '../../../common/prisma/types'
+import type {
+  DailyCapUpsertRow,
+  CreateEventData,
+  CreateTimelineEntryData,
+  DailyCapRow,
+  EventRow,
+  TimelineRow,
+  UpsertUserStatsCreateData,
+  UpsertUserStatsUpdateData,
+  UserStatsRow,
+  WeeklyStatRow,
+} from './ScoringRepositoryModel'
 
 @Injectable()
 export class ScoringRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findDailyCap(userId: string, eventType: EventType, date: Date) {
+  findDailyCap(userId: string, eventType: EventType, date: Date): Promise<DailyCapRow> {
     return this.prisma.dailyCap.findUnique({
       where: { userId_eventType_date: { userId, eventType, date } },
     })
@@ -19,42 +31,17 @@ export class ScoringRepository {
 
   createEvent(
     tx: TxClient,
-    data: {
-      eventId: string
-      userId: string
-      provider: string
-      eventType: EventType
-      entityId: string
-      rawPayload: object
-      pointsAwarded: number
-      capReached: boolean
-      timestamp: Date
-      processedAt: Date
-    },
-  ) {
+    data: CreateEventData,
+  ): Promise<EventRow> {
     return tx.event.create({ data })
   }
 
   upsertUserStats(
     tx: TxClient,
     userId: string,
-    create: {
-      totalXP: number
-      totalPoints: number
-      level: number
-      currentStreak: number
-      longestStreak: number
-      lastActivityDate: Date | null
-    },
-    update: {
-      totalXP: number
-      totalPoints: number
-      level: number
-      currentStreak?: number
-      longestStreak?: number
-      lastActivityDate?: Date
-    },
-  ) {
+    create: UpsertUserStatsCreateData,
+    update: UpsertUserStatsUpdateData,
+  ): Promise<UserStatsRow> {
     return tx.userStats.upsert({
       where: { userId },
       create: { userId, ...create },
@@ -62,7 +49,12 @@ export class ScoringRepository {
     })
   }
 
-  upsertWeeklyStat(tx: TxClient, userId: string, isoWeek: string, points: number) {
+  upsertWeeklyStat(
+    tx: TxClient,
+    userId: string,
+    isoWeek: string,
+    points: number,
+  ): Promise<WeeklyStatRow> {
     return tx.weeklyStat.upsert({
       where: { userId_isoWeek: { userId, isoWeek } },
       create: { userId, isoWeek, weekPoints: points },
@@ -70,7 +62,12 @@ export class ScoringRepository {
     })
   }
 
-  upsertDailyCap(tx: TxClient, userId: string, eventType: EventType, date: Date) {
+  upsertDailyCap(
+    tx: TxClient,
+    userId: string,
+    eventType: EventType,
+    date: Date,
+  ): Promise<DailyCapUpsertRow> {
     return tx.dailyCap.upsert({
       where: { userId_eventType_date: { userId, eventType, date } },
       create: { userId, eventType, date, count: 1 },
@@ -80,18 +77,8 @@ export class ScoringRepository {
 
   createTimelineEntry(
     tx: TxClient,
-    data: {
-      userId: string
-      type: TimelineEventType
-      badgeType?: BadgeType
-      eventId?: string
-      pointsSnapshot: number
-      xpSnapshot: number
-      levelSnapshot: number
-      weekKey?: string
-      metadata?: object
-    },
-  ) {
+    data: CreateTimelineEntryData,
+  ): Promise<TimelineRow> {
     return tx.awardTimeline.create({ data })
   }
 }

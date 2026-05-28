@@ -5,6 +5,11 @@ import { BadgeType, User } from '@db'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
 import { NotificationsRepository } from './NotificationsRepository'
 import { EMAIL_TEMPLATES, type EmailTemplateId, getEmailTemplateById } from './emailTemplates'
+import type {
+  BadgeUnlockTestEmailParams,
+  ListNotificationLogsParams,
+  SendTestEmailParams,
+} from './INotificationsService'
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -93,24 +98,14 @@ export class NotificationsService implements OnModuleInit {
     return !!existing
   }
 
-  async listNotificationLogs(params: {
-    type?: string
-    from?: Date
-    to?: Date
-    limit: number
-    offset: number
-  }) {
+  async listNotificationLogs(
+    params: ListNotificationLogsParams,
+  ): Promise<{ items: Awaited<ReturnType<NotificationsRepository['findNotificationLogs']>>[0]; total: number; limit: number; offset: number }> {
     const [items, total] = await this.notificationsRepo.findNotificationLogs(params)
     return { items, total, limit: params.limit, offset: params.offset }
   }
 
-  async sendTestEmail(params: {
-    templateId: EmailTemplateId
-    toEmail: string
-    actorUserId: string
-    userId?: string
-    week?: string
-  }): Promise<{ accepted: boolean }> {
+  async sendTestEmail(params: SendTestEmailParams): Promise<{ accepted: boolean }> {
     const template = getEmailTemplateById(params.templateId)
     if (!template) return { accepted: false }
 
@@ -130,7 +125,7 @@ export class NotificationsService implements OnModuleInit {
   }
 
   private async sendBadgeUnlockTestEmail(
-    params: { templateId: EmailTemplateId; toEmail: string; actorUserId: string; userId?: string },
+    params: BadgeUnlockTestEmailParams,
     user: User,
     badgeType: BadgeType = 'CONSISTENT_CLOSER' as BadgeType,
   ): Promise<{ accepted: boolean }> {
@@ -156,7 +151,7 @@ export class NotificationsService implements OnModuleInit {
   }
 
   private async sendStreakRiskTestEmail(
-    params: { templateId: EmailTemplateId; toEmail: string; actorUserId: string; userId?: string },
+    params: BadgeUnlockTestEmailParams,
     user: User,
     streak: number,
   ): Promise<{ accepted: boolean }> {

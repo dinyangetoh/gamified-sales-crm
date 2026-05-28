@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common'
 import { EventType, TimelineEventType, UserStats } from '@db'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
-import { ScoringConfig } from '../../common/config/scoringConfig.schema'
 import { BadgesService } from '../badges/BadgesService'
 import { UsersService } from '../users/UsersService'
 import { DeduplicationService } from '../../common/cache/DeduplicationService'
@@ -18,29 +17,10 @@ import { NotificationJobName } from '../../common/queues/JobName'
 import { BadgeType } from '@db'
 import { ScoringRepository } from './repositories/ScoringRepository'
 import { ScoringConfigService } from './ScoringConfigService'
-import { CreateEventInput, EventResult } from './types/eventResult.types'
-import type { BadgeResult } from '../badges/BadgesService'
+import { CreateEventInput, EventResult } from './ScoringModel'
+import type { EventContext } from './ScoringModel'
+import type { BadgeResult } from '../badges/IBadgesService'
 import type { TxClient } from '../../common/prisma/types'
-
-interface EventContext {
-  input: CreateEventInput
-  provider: string
-  timestamp: Date
-  rules: ScoringConfig
-  today: Date
-  capReached: boolean
-  capConfig: ScoringConfig['dailyCaps'][EventType] | undefined
-  pointsAwarded: number
-  currentStats: UserStats | null
-  newXP: number
-  newPoints: number
-  newLevel: number
-  newLevelLabel: string
-  levelUp: boolean
-  streakUpdate: ReturnType<typeof computeStreakUpdate>
-  newStreak: number
-  isoWeek: string
-}
 
 @Injectable()
 export class ScoringEventProcessor {

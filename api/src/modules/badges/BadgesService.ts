@@ -3,10 +3,7 @@ import { BadgeType, EventType } from '@db'
 import type { TxClient } from '../../common/prisma/types'
 import { BADGE_DEFINITIONS, type BadgeDefinition } from './badgeDefinitions'
 import { BadgesRepository } from './BadgesRepository'
-
-export interface BadgeResult {
-  unlocked: BadgeType[]
-}
+import type { BadgeResult } from './IBadgesService'
 
 @Injectable()
 export class BadgesService {

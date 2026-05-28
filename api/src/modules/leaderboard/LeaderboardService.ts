@@ -8,6 +8,12 @@ import { dedupeBadgeAwards } from '../../common/helpers/badges/badgeDisplayHelpe
 import { ScoringConfig } from '../../common/config/scoringConfig.schema'
 import { LeaderboardRepository } from './LeaderboardRepository'
 import { ScoringConfigService } from '../scoring/ScoringConfigService'
+import type {
+  AllTimeLeaderboardEntry,
+  AllTimeLeaderboardResult,
+  WeeklyLeaderboardEntry,
+  WeeklyLeaderboardResult,
+} from './ILeaderboardService'
 
 @Injectable()
 export class LeaderboardService {
@@ -17,13 +23,13 @@ export class LeaderboardService {
     @Inject(CACHE_ADAPTER) private readonly cache: ICacheAdapter,
   ) {}
 
-  async getWeeklyLeaderboard(isoWeek?: string) {
+  async getWeeklyLeaderboard(isoWeek?: string): Promise<WeeklyLeaderboardResult> {
     const week = isoWeek ?? currentIsoWeek()
     const prevWeek = previousIsoWeek(week)
     const cacheKey = CacheKey.leaderboard(week)
 
     const cached = await this.cache.get(cacheKey)
-    if (cached) return { ...(cached as object), fromCache: true }
+    if (cached) return { ...(cached as WeeklyLeaderboardResult), fromCache: true }
 
     const [weekStats, prevWeekStats, { levels }] = await Promise.all([
       this.leaderboardRepo.findWeeklyStats(week),
@@ -42,10 +48,10 @@ export class LeaderboardService {
     return result
   }
 
-  async getAllTimeLeaderboard() {
+  async getAllTimeLeaderboard(): Promise<AllTimeLeaderboardResult> {
     const cacheKey = CacheKey.leaderboardAllTime()
     const cached = await this.cache.get(cacheKey)
-    if (cached) return { ...(cached as object), fromCache: true }
+    if (cached) return { ...(cached as AllTimeLeaderboardResult), fromCache: true }
 
     const [allStats, { levels }] = await Promise.all([
       this.leaderboardRepo.findAllUserStats(),
@@ -65,7 +71,7 @@ export class LeaderboardService {
     weekStats: Awaited<ReturnType<LeaderboardRepository['findWeeklyStats']>>,
     prevRankByUserId: Map<string, number>,
     levels: ScoringConfig['levels'],
-  ) {
+  ): WeeklyLeaderboardEntry {
     const rank = idx + 1
     const lastWeekRank = prevRankByUserId.get(ws.userId)
     const rankDelta = lastWeekRank !== undefined ? lastWeekRank - rank : undefined
@@ -97,7 +103,7 @@ export class LeaderboardService {
     idx: number,
     allStats: Awaited<ReturnType<LeaderboardRepository['findAllUserStats']>>,
     levels: ScoringConfig['levels'],
-  ) {
+  ): AllTimeLeaderboardEntry {
     const above = allStats[idx - 1]
     const pointsGap = above ? above.totalXP - s.totalXP : 0
     const levelLabel = deriveLevelLabel(s.totalXP, levels)

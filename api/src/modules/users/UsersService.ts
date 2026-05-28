@@ -4,15 +4,15 @@ import { getEventTypeDisplayName } from '../../common/labels/eventTypeLabels'
 import { BADGE_DEFINITIONS, getBadgeDefinition } from '../badges/badgeDefinitions'
 import { currentIsoWeek } from '../../common/helpers/scoring/isoWeekHelper'
 import { UsersRepository } from './UsersRepository'
-
-type BadgeAwardRow = { badgeType: BadgeType; awardedAt: Date; weekKey?: string | null }
-type BadgeProgressRow = {
-  badgeType: BadgeType
-  currentCount: number
-  targetCount: number
-  weekKey: string | null
-  updatedAt: Date
-}
+import type {
+  BadgeAwardRow,
+  BadgeProgressRow,
+  EventFeedResult,
+  SalesRepSummary,
+  TimelineResult,
+  UserProfileResult,
+  UserEventFeedParams,
+} from './IUsersService'
 
 @Injectable()
 export class UsersService {
@@ -32,11 +32,11 @@ export class UsersService {
     return this.usersRepo.findStats(userId)
   }
 
-  async findUsersAtRisk(yesterday: Date, today: Date) {
+  async findUsersAtRisk(yesterday: Date, today: Date): ReturnType<UsersRepository['findUsersAtRisk']> {
     return this.usersRepo.findUsersAtRisk(yesterday, today)
   }
 
-  async listSalesRepSummaries() {
+  async listSalesRepSummaries(): Promise<SalesRepSummary[]> {
     const users = await this.usersRepo.findSalesReps()
     return users.map((u) => ({
       userId: u.id,
@@ -47,12 +47,12 @@ export class UsersService {
       currentStreak: u.stats?.currentStreak ?? 0,
       longestStreak: u.stats?.longestStreak ?? 0,
       badgeCount: new Set(u.badgeAwards.map((b) => b.badgeType)).size,
-      eventCount: (u as any).eventCount ?? 0,
+      eventCount: u.eventCount ?? 0,
       lastActivityAt: u.stats?.lastActivityDate ?? null,
     }))
   }
 
-  async getProfile(userId: string) {
+  async getProfile(userId: string): Promise<UserProfileResult> {
     const user = await this.findOrThrow(userId)
     const stats = await this.usersRepo.findStats(userId)
     const earned = await this.usersRepo.findBadgeAwards(userId)
@@ -86,7 +86,7 @@ export class UsersService {
     }
   }
 
-  async getTimeline(userId: string, limit = 20, offset = 0) {
+  async getTimeline(userId: string, limit = 20, offset = 0): Promise<TimelineResult> {
     const [entries, total] = await this.usersRepo.findTimeline(userId, limit, offset)
 
     const timeline = entries.map((e) => {
@@ -111,8 +111,8 @@ export class UsersService {
 
   async getEventFeed(
     userId: string,
-    params: { from?: string; to?: string; limit?: number; offset?: number },
-  ) {
+    params: UserEventFeedParams,
+  ): Promise<EventFeedResult> {
     const limit = params.limit ?? 50
     const offset = params.offset ?? 0
     const [events, total] = await this.usersRepo.findEventFeed(userId, { ...params, limit, offset })

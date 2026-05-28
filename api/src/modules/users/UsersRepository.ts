@@ -2,38 +2,51 @@ import { Injectable } from '@nestjs/common'
 import { Role } from '@db'
 import { PrismaService } from '../../common/prisma/PrismaService'
 import { addWeeks, startOfISOWeek } from 'date-fns'
+import type {
+  BadgeAwardRows,
+  BadgeProgressRows,
+  EventFeedParams,
+  EventFeedResult,
+  EventFeedWhere,
+  GroupedEventCount,
+  TimelineResult,
+  UserRowOrNull,
+  UserStatsRowOrNull,
+  UserStatsWithUserRows,
+  SalesRepWithStatsAndBadges,
+} from './UsersModel'
 
 @Injectable()
 export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findById(id: string) {
+  findById(id: string): Promise<UserRowOrNull> {
     return this.prisma.user.findUnique({ where: { id } })
   }
 
-  findByEmail(email: string) {
+  findByEmail(email: string): Promise<UserRowOrNull> {
     return this.prisma.user.findUnique({ where: { email } })
   }
 
-  findStats(userId: string) {
+  findStats(userId: string): Promise<UserStatsRowOrNull> {
     return this.prisma.userStats.findUnique({ where: { userId } })
   }
 
-  findBadgeAwards(userId: string) {
+  findBadgeAwards(userId: string): Promise<BadgeAwardRows> {
     return this.prisma.badgeAward.findMany({
       where: { userId },
       orderBy: { awardedAt: 'asc' },
     })
   }
 
-  findBadgeProgressInProgress(userId: string) {
+  findBadgeProgressInProgress(userId: string): Promise<BadgeProgressRows> {
     return this.prisma.badgeProgress.findMany({
       where: { userId, isCompleted: false },
       orderBy: { updatedAt: 'desc' },
     })
   }
 
-  findTimeline(userId: string, limit: number, offset: number) {
+  findTimeline(userId: string, limit: number, offset: number): Promise<TimelineResult> {
     return Promise.all([
       this.prisma.awardTimeline.findMany({
         where: { userId },
@@ -45,13 +58,10 @@ export class UsersRepository {
     ])
   }
 
-  findEventFeed(
-    userId: string,
-    params: { from?: string; to?: string; limit?: number; offset?: number },
-  ) {
+  findEventFeed(userId: string, params: EventFeedParams): Promise<EventFeedResult> {
     const limit = params.limit ?? 50
     const offset = params.offset ?? 0
-    const where = {
+    const where: EventFeedWhere = {
       userId,
       ...(params.from || params.to
         ? {
@@ -84,7 +94,7 @@ export class UsersRepository {
     ])
   }
 
-  findSalesReps() {
+  findSalesReps(): Promise<SalesRepWithStatsAndBadges[]> {
     const now = new Date()
     const weekStart = startOfISOWeek(now)
     const weekEnd = addWeeks(weekStart, 1)
@@ -106,7 +116,7 @@ export class UsersRepository {
         _count: { _all: true },
       }),
     ]).then(([users, counts]) => {
-      const eventCountByUserId = new Map(counts.map((c: any) => [c.userId, c._count._all]))
+      const eventCountByUserId = new Map((counts as GroupedEventCount[]).map((c) => [c.userId, c._count._all]))
       return users.map((u) => ({
         ...u,
         eventCount: eventCountByUserId.get(u.id) ?? 0,
@@ -114,7 +124,7 @@ export class UsersRepository {
     })
   }
 
-  findUsersAtRisk(yesterday: Date, today: Date) {
+  findUsersAtRisk(yesterday: Date, today: Date): Promise<UserStatsWithUserRows> {
     return this.prisma.userStats.findMany({
       where: {
         lastActivityDate: { gte: yesterday, lt: today },

@@ -642,6 +642,14 @@ Redis handles the hot path (sub-millisecond). Postgres handles the race conditio
 
 ---
 
+### Type Placement Convention
+
+- Service and processor implementation files should not declare inline `interface` or `type` contracts.
+- Reusable method payload/result contracts should live in colocated module type files (for example, `types/*.types.ts`).
+- Public service and repository methods should declare explicit return types to keep contracts stable and discoverable.
+
+---
+
 ## 13. Installation & Running Locally
 
 ### Prerequisites

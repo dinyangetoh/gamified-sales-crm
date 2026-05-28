@@ -5,6 +5,7 @@ import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
 import { ScoringConfigService } from '../scoring/ScoringConfigService'
 import { EventTypeOptionDto } from './dto/EventTypeOptionDto'
 import { LevelConfigDto } from './dto/LevelConfigDto'
+import type { AdminRulesResponseDto } from '../admin/dto/AdminRulesResponseDto'
 
 @Injectable()
 export class ConfigService {
@@ -27,7 +28,7 @@ export class ConfigService {
     }))
   }
 
-  async getGamificationRules() {
+  async getGamificationRules(): Promise<AdminRulesResponseDto> {
     const config = await this.scoringConfigService.getConfig()
     const updatedAt = new Date()
 

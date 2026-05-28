@@ -7,7 +7,18 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
 } from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiInternalServerErrorResponse,
+  ApiNotFoundResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger'
 import { Role } from '@db'
 import { UsersService } from './UsersService'
 import { CurrentUser } from '../../common/decorators/currentUser'
@@ -15,6 +26,7 @@ import type { JwtPayload } from '../auth/JwtStrategy'
 import { UserProfileResponseDto } from './dto/UserProfileResponseDto'
 import { TimelineResponseDto } from './dto/TimelineResponseDto'
 import { EventFeedResponseDto } from './dto/EventFeedResponseDto'
+import { ErrorResponseDto } from '../../common/dto/ErrorResponseDto'
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -25,8 +37,10 @@ export class UsersController {
   @Get(':userId')
   @ApiOperation({ summary: 'Get user gamification profile' })
   @ApiResponse({ status: 200, type: UserProfileResponseDto })
-  @ApiResponse({ status: 403 })
-  @ApiResponse({ status: 404 })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiInternalServerErrorResponse({ type: ErrorResponseDto })
   async getProfile(@Param('userId') userId: string, @CurrentUser() actor: JwtPayload) {
     if (actor.role !== Role.MANAGER && actor.sub !== userId) {
       throw new ForbiddenException()
@@ -39,8 +53,11 @@ export class UsersController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'offset', required: false })
   @ApiResponse({ status: 200, type: TimelineResponseDto })
-  @ApiResponse({ status: 403 })
-  @ApiResponse({ status: 404 })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiInternalServerErrorResponse({ type: ErrorResponseDto })
   async getTimeline(
     @Param('userId') userId: string,
     @CurrentUser() actor: JwtPayload,
@@ -60,8 +77,11 @@ export class UsersController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'offset', required: false })
   @ApiResponse({ status: 200, type: EventFeedResponseDto })
-  @ApiResponse({ status: 403 })
-  @ApiResponse({ status: 404 })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiInternalServerErrorResponse({ type: ErrorResponseDto })
   async getEvents(
     @Param('userId') userId: string,
     @CurrentUser() actor: JwtPayload,
