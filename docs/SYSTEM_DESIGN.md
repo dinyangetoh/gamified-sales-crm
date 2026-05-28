@@ -109,7 +109,7 @@ erDiagram
     }
 
     UserStats {
-        string userId PK FK
+        string userId PK
         int totalXp
         int weekPoints
         int streakDays
@@ -137,13 +137,12 @@ erDiagram
         string eventType
         date date
         int count
-        PK "(userId, eventType, date)"
     }
 
     BadgeAward {
         string id PK
         string userId FK
-        string badgeKey UK "(userId, badgeKey, weekKey)"
+        string badgeKey
         string weekKey
         datetime awardedAt
     }
@@ -153,7 +152,6 @@ erDiagram
         string badgeKey FK
         string weekKey
         int currentCount
-        PK "(userId, badgeKey, weekKey)"
     }
 
     AwardTimeline {
