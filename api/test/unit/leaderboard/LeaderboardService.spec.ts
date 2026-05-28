@@ -1,5 +1,6 @@
 import { mock, MockProxy } from 'jest-mock-extended'
 import { Test } from '@nestjs/testing'
+import { InternalServerErrorException, Logger } from '@nestjs/common'
 import { LeaderboardService } from '../../../src/modules/leaderboard/LeaderboardService'
 import { LeaderboardRepository } from '../../../src/modules/leaderboard/LeaderboardRepository'
 import { ScoringConfigService } from '../../../src/modules/scoring/ScoringConfigService'
@@ -125,6 +126,32 @@ describe('LeaderboardService', () => {
 
       await service.getWeeklyLeaderboard('2025-W21')
       expect(cache.set).toHaveBeenCalled()
+    })
+
+    it('falls back to repository data and warns on cache read failure', async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation()
+      cache.get.mockRejectedValue(new Error('cache down'))
+      leaderboardRepo.findWeeklyStats.mockResolvedValue([
+        makeWeeklyStat('alice', 300),
+        makeWeeklyStat('bob', 200),
+      ] as never)
+
+      const result = await service.getWeeklyLeaderboard('2025-W21')
+      expect(result.entries).toHaveLength(2)
+      expect(leaderboardRepo.findWeeklyStats).toHaveBeenCalled()
+      expect(loggerSpy).toHaveBeenCalled()
+      loggerSpy.mockRestore()
+    })
+
+    it('throws InternalServerErrorException and logs on repository fetch failure', async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation()
+      leaderboardRepo.findWeeklyStats.mockRejectedValue(new Error('db down'))
+
+      await expect(service.getWeeklyLeaderboard('2025-W21')).rejects.toBeInstanceOf(
+        InternalServerErrorException,
+      )
+      expect(loggerSpy).toHaveBeenCalled()
+      loggerSpy.mockRestore()
     })
   })
 

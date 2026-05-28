@@ -31,3 +31,14 @@ Auth: JWT Bearer token obtained from `POST /auth/login`.
 - All scoring happens synchronously inside a Prisma transaction in `ScoringService.processEvent`
 - Webhook endpoints (`POST /webhooks/:provider`) are `@Public()` and guarded by `WebhookGuard` (HMAC)
 - `RESEND_API_KEY` is optional — app starts without it, logs a warning, skips email sends but still writes `NotificationLog`
+
+## Coding standards updates
+
+- Shared service contracts must be defined in files named `I<ServiceName>.ts` (example: `ILeaderboardService.ts`).
+- Shared repository/domain model contracts must be defined in files named `<Domain>Model.ts` (example: `LeaderboardModel.ts`).
+- Do not declare inline `interface`/`type` definitions inside service or processor implementation files.
+- Public methods in services and repositories must declare explicit return types.
+- Keep services and repositories lean; orchestration and data access responsibilities should stay focused.
+- Use one top-level try/catch per public service method (avoid multiple nested try/catch blocks).
+- For cache pass-through paths, prefer graceful fallback (`.catch` warning + continue) over dedicated try/catch blocks.
+- In catch blocks, log structured context (`service`, `method`, `operation`, relevant identifiers) and map to safe Nest exceptions for HTTP via `handleServiceError`.

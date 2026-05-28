@@ -1,4 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common'
+import {
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common'
 import { EventType, TimelineEventType, UserStats } from '@db'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
@@ -21,9 +25,12 @@ import { CreateEventInput, EventResult } from './ScoringModel'
 import type { EventContext } from './ScoringModel'
 import type { BadgeResult } from '../badges/IBadgesService'
 import type { TxClient } from '../../common/prisma/types'
+import { handleServiceError } from '../../common/errors/ServiceErrorHandler'
 
 @Injectable()
 export class ScoringEventProcessor {
+  private readonly logger = new Logger(ScoringEventProcessor.name)
+
   constructor(
     private readonly scoringRepo: ScoringRepository,
     private readonly scoringConfigService: ScoringConfigService,
@@ -35,21 +42,55 @@ export class ScoringEventProcessor {
   ) {}
 
   async processEvent(input: CreateEventInput): Promise<EventResult> {
-    await this.usersService.findOrThrow(input.userId)
-    const provider = input.provider ?? 'generic'
-    const timestamp = new Date(input.timestamp)
+    try {
+      await this.usersService.findOrThrow(input.userId)
+      const provider = input.provider ?? 'generic'
+      const timestamp = new Date(input.timestamp)
+      const alreadyProcessed = await this.dedup.isProcessed(input.eventId, provider)
 
-    if (await this.dedup.isProcessed(input.eventId, provider)) {
-      return this.buildDuplicateEventResult(input.eventId)
+      if (alreadyProcessed) {
+        return this.buildDuplicateEventResult(input.eventId)
+      }
+
+      const ctx = await this.prepareEventContext(input, provider, timestamp)
+      const { stats, badgeResult } = await this.persistScoredEvent(ctx)
+
+      await this.invalidateLeaderboardCache(ctx.isoWeek).catch((error) => {
+        this.logger.warn(
+          {
+            service: ScoringEventProcessor.name,
+            method: 'processEvent',
+            operation: 'invalidateLeaderboardCache',
+            metadata: { eventId: input.eventId, isoWeek: ctx.isoWeek },
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+          'Failed to invalidate leaderboard cache after scoring',
+        )
+      })
+
+      await this.enqueuePostEventNotifications(ctx, badgeResult).catch((error) => {
+        this.logger.warn(
+          {
+            service: ScoringEventProcessor.name,
+            method: 'processEvent',
+            operation: 'enqueuePostEventNotifications',
+            metadata: { eventId: input.eventId, userId: input.userId },
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+          'Failed to enqueue post-event notifications; scoring already persisted',
+        )
+      })
+
+      return this.buildSuccessEventResult(ctx, stats, badgeResult)
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: ScoringEventProcessor.name,
+        method: 'processEvent',
+        operation: 'processScoringEvent',
+        safeMessage: 'Unable to process scoring event right now.',
+        metadata: { eventId: input.eventId, userId: input.userId, eventType: input.eventType },
+      })
     }
-
-    const ctx = await this.prepareEventContext(input, provider, timestamp)
-    const { stats, badgeResult } = await this.persistScoredEvent(ctx)
-
-    await this.invalidateLeaderboardCache(ctx.isoWeek)
-    await this.enqueuePostEventNotifications(ctx, badgeResult)
-
-    return this.buildSuccessEventResult(ctx, stats, badgeResult)
   }
 
   private buildDuplicateEventResult(eventId: string): EventResult {
@@ -132,7 +173,7 @@ export class ScoringEventProcessor {
     }
   }
 
-  private async persistScoredEvent(ctx: EventContext) {
+  private async persistScoredEvent(ctx: EventContext): Promise<{ stats: UserStats; badgeResult: BadgeResult }> {
     const { input, provider, timestamp, streakUpdate, pointsAwarded, capReached } = ctx
 
     return this.scoringRepo.runTransaction(async (tx) => {

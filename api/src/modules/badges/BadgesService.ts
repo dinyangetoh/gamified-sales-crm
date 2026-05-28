@@ -1,12 +1,15 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { BadgeType, EventType } from '@db'
 import type { TxClient } from '../../common/prisma/types'
 import { BADGE_DEFINITIONS, type BadgeDefinition } from './badgeDefinitions'
 import { BadgesRepository } from './BadgesRepository'
 import type { BadgeResult } from './IBadgesService'
+import { handleServiceError } from '../../common/errors/ServiceErrorHandler'
 
 @Injectable()
 export class BadgesService {
+  private readonly logger = new Logger(BadgesService.name)
+
   constructor(private readonly badgesRepo: BadgesRepository) {}
 
   async evaluate(
@@ -17,19 +20,29 @@ export class BadgesService {
     currentStreak: number,
     eventAt: Date = new Date(),
   ): Promise<BadgeResult> {
-    const unlocked: BadgeType[] = []
+    try {
+      const unlocked: BadgeType[] = []
 
-    const relevantDefs = BADGE_DEFINITIONS.filter((def) => {
-      if (def.type === BadgeType.HOT_STREAK) return true
-      return def.eventTypes.includes(eventType)
-    })
+      const relevantDefs = BADGE_DEFINITIONS.filter((def) => {
+        if (def.type === BadgeType.HOT_STREAK) return true
+        return def.eventTypes.includes(eventType)
+      })
 
-    for (const def of relevantDefs) {
-      const earned = await this.tryUnlockBadge(tx, userId, def, isoWeek, currentStreak, eventAt)
-      if (earned) unlocked.push(def.type)
+      for (const def of relevantDefs) {
+        const earned = await this.tryUnlockBadge(tx, userId, def, isoWeek, currentStreak, eventAt)
+        if (earned) unlocked.push(def.type)
+      }
+
+      return { unlocked }
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: BadgesService.name,
+        method: 'evaluate',
+        operation: 'evaluateBadgeUnlocks',
+        safeMessage: 'Unable to evaluate badge progress right now.',
+        metadata: { userId, eventType, isoWeek },
+      })
     }
-
-    return { unlocked }
   }
 
   private async tryUnlockBadge(

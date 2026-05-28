@@ -2,8 +2,9 @@ import { mock, MockProxy } from 'jest-mock-extended'
 import { Test } from '@nestjs/testing'
 import { EventType, BadgeType, Role } from '@prisma/client'
 import { getQueueToken } from '@nestjs/bullmq'
+import { InternalServerErrorException, Logger } from '@nestjs/common'
 import { ScoringEventProcessor } from '../../../src/modules/scoring/ScoringEventProcessor'
-import { CreateEventInput } from '../../../src/modules/scoring/types/eventResult.types'
+import { CreateEventInput } from '../../../src/modules/scoring/ScoringModel'
 import { ScoringRepository } from '../../../src/modules/scoring/repositories/ScoringRepository'
 import { ScoringConfigService } from '../../../src/modules/scoring/ScoringConfigService'
 import { BadgesService } from '../../../src/modules/badges/BadgesService'
@@ -171,6 +172,30 @@ describe('ScoringEventProcessor', () => {
       const result = await processor.processEvent(baseInput)
       expect(result.badgesUnlocked).toHaveLength(1)
       expect(result.badgesUnlocked[0].type).toBe(BadgeType.FIRST_WIN)
+    })
+  })
+
+  describe('error handling', () => {
+    it('throws InternalServerErrorException and logs when dedup check fails', async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation()
+      dedup.isProcessed.mockRejectedValue(new Error('redis unavailable'))
+
+      await expect(processor.processEvent(baseInput)).rejects.toBeInstanceOf(
+        InternalServerErrorException,
+      )
+      expect(loggerSpy).toHaveBeenCalled()
+      loggerSpy.mockRestore()
+    })
+
+    it('throws InternalServerErrorException and logs when transaction persistence fails', async () => {
+      const loggerSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation()
+      scoringRepo.runTransaction.mockRejectedValue(new Error('transaction failed'))
+
+      await expect(processor.processEvent(baseInput)).rejects.toBeInstanceOf(
+        InternalServerErrorException,
+      )
+      expect(loggerSpy).toHaveBeenCalled()
+      loggerSpy.mockRestore()
     })
   })
 })

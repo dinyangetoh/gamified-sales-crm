@@ -2,7 +2,7 @@ import { mock, MockProxy } from 'jest-mock-extended'
 import { EventType } from '@prisma/client'
 import { ScoringService } from '../../../src/modules/scoring/ScoringService'
 import { ScoringEventProcessor } from '../../../src/modules/scoring/ScoringEventProcessor'
-import { CreateEventInput } from '../../../src/modules/scoring/types/eventResult.types'
+import { CreateEventInput } from '../../../src/modules/scoring/ScoringModel'
 
 describe('ScoringService', () => {
   let service: ScoringService

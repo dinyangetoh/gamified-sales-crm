@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { User, UserStats, BadgeType } from '@db'
 import { getEventTypeDisplayName } from '../../common/labels/eventTypeLabels'
 import { BADGE_DEFINITIONS, getBadgeDefinition } from '../badges/badgeDefinitions'
 import { currentIsoWeek } from '../../common/helpers/scoring/isoWeekHelper'
 import { UsersRepository } from './UsersRepository'
+import { handleServiceError } from '../../common/errors/ServiceErrorHandler'
 import type {
   BadgeAwardRow,
   BadgeProgressRow,
@@ -16,47 +17,99 @@ import type {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name)
+
   constructor(private readonly usersRepo: UsersRepository) {}
 
   async findOrThrow(userId: string): Promise<User> {
-    const user = await this.usersRepo.findById(userId)
-    if (!user) throw new NotFoundException(`User ${userId} not found`)
-    return user
+    try {
+      const user = await this.usersRepo.findById(userId)
+      if (!user) throw new NotFoundException(`User ${userId} not found`)
+      return user
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: UsersService.name,
+        method: 'findOrThrow',
+        operation: 'findUserById',
+        safeMessage: 'Unable to load user profile right now.',
+        metadata: { userId },
+      })
+    }
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepo.findByEmail(email)
+    try {
+      return await this.usersRepo.findByEmail(email)
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: UsersService.name,
+        method: 'findByEmail',
+        operation: 'findUserByEmail',
+        safeMessage: 'Unable to resolve user credentials right now.',
+        metadata: { email },
+      })
+    }
   }
 
   async getStats(userId: string): Promise<UserStats | null> {
-    return this.usersRepo.findStats(userId)
+    try {
+      return await this.usersRepo.findStats(userId)
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: UsersService.name,
+        method: 'getStats',
+        operation: 'findUserStats',
+        safeMessage: 'Unable to load user stats right now.',
+        metadata: { userId },
+      })
+    }
   }
 
   async findUsersAtRisk(yesterday: Date, today: Date): ReturnType<UsersRepository['findUsersAtRisk']> {
-    return this.usersRepo.findUsersAtRisk(yesterday, today)
+    try {
+      return await this.usersRepo.findUsersAtRisk(yesterday, today)
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: UsersService.name,
+        method: 'findUsersAtRisk',
+        operation: 'findUsersAtRisk',
+        safeMessage: 'Unable to load at-risk users right now.',
+        metadata: { yesterday: yesterday.toISOString(), today: today.toISOString() },
+      })
+    }
   }
 
   async listSalesRepSummaries(): Promise<SalesRepSummary[]> {
-    const users = await this.usersRepo.findSalesReps()
-    return users.map((u) => ({
-      userId: u.id,
-      name: u.name,
-      email: u.email,
-      totalXP: u.stats?.totalXP ?? 0,
-      level: u.stats?.level ?? 1,
-      currentStreak: u.stats?.currentStreak ?? 0,
-      longestStreak: u.stats?.longestStreak ?? 0,
-      badgeCount: new Set(u.badgeAwards.map((b) => b.badgeType)).size,
-      eventCount: u.eventCount ?? 0,
-      lastActivityAt: u.stats?.lastActivityDate ?? null,
-    }))
+    try {
+      const users = await this.usersRepo.findSalesReps()
+      return users.map((u) => ({
+        userId: u.id,
+        name: u.name,
+        email: u.email,
+        totalXP: u.stats?.totalXP ?? 0,
+        level: u.stats?.level ?? 1,
+        currentStreak: u.stats?.currentStreak ?? 0,
+        longestStreak: u.stats?.longestStreak ?? 0,
+        badgeCount: new Set(u.badgeAwards.map((b) => b.badgeType)).size,
+        eventCount: u.eventCount ?? 0,
+        lastActivityAt: u.stats?.lastActivityDate ?? null,
+      }))
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: UsersService.name,
+        method: 'listSalesRepSummaries',
+        operation: 'buildSalesRepSummaries',
+        safeMessage: 'Unable to load sales rep summaries right now.',
+      })
+    }
   }
 
   async getProfile(userId: string): Promise<UserProfileResult> {
-    const user = await this.findOrThrow(userId)
-    const stats = await this.usersRepo.findStats(userId)
-    const earned = await this.usersRepo.findBadgeAwards(userId)
-    const inProgress = await this.usersRepo.findBadgeProgressInProgress(userId)
+    try {
+      const user = await this.findOrThrow(userId)
+      const stats = await this.usersRepo.findStats(userId)
+      const earned = await this.usersRepo.findBadgeAwards(userId)
+      const inProgress = await this.usersRepo.findBadgeProgressInProgress(userId)
 
     const earnedTypes = new Set(earned.map((b) => b.badgeType))
     const earnedBadges = this.aggregateEarnedBadges(earned)
@@ -68,26 +121,36 @@ export class UsersService {
     const inProgressTypes = new Set(inProgressBadges.map((b) => b.type as BadgeType))
     const lockedBadges = this.buildLockedBadges(earnedTypes, inProgressTypes)
 
-    return {
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      stats: stats
-        ? {
-            totalXP: stats.totalXP,
-            totalPoints: stats.totalPoints,
-            level: stats.level,
-            currentStreak: stats.currentStreak,
-            longestStreak: stats.longestStreak,
-          }
-        : null,
-      badges: { earned: earnedBadges, inProgress: inProgressBadges, locked: lockedBadges },
+      return {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        stats: stats
+          ? {
+              totalXP: stats.totalXP,
+              totalPoints: stats.totalPoints,
+              level: stats.level,
+              currentStreak: stats.currentStreak,
+              longestStreak: stats.longestStreak,
+            }
+          : null,
+        badges: { earned: earnedBadges, inProgress: inProgressBadges, locked: lockedBadges },
+      }
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: UsersService.name,
+        method: 'getProfile',
+        operation: 'assembleUserProfile',
+        safeMessage: 'Unable to load user profile right now.',
+        metadata: { userId },
+      })
     }
   }
 
   async getTimeline(userId: string, limit = 20, offset = 0): Promise<TimelineResult> {
-    const [entries, total] = await this.usersRepo.findTimeline(userId, limit, offset)
+    try {
+      const [entries, total] = await this.usersRepo.findTimeline(userId, limit, offset)
 
     const timeline = entries.map((e) => {
       const badgeDef = e.badgeType ? getBadgeDefinition(e.badgeType) : null
@@ -106,24 +169,43 @@ export class UsersService {
       }
     })
 
-    return { timeline, total, limit, offset }
+      return { timeline, total, limit, offset }
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: UsersService.name,
+        method: 'getTimeline',
+        operation: 'fetchUserTimeline',
+        safeMessage: 'Unable to load user timeline right now.',
+        metadata: { userId, limit, offset },
+      })
+    }
   }
 
   async getEventFeed(
     userId: string,
     params: UserEventFeedParams,
   ): Promise<EventFeedResult> {
-    const limit = params.limit ?? 50
-    const offset = params.offset ?? 0
-    const [events, total] = await this.usersRepo.findEventFeed(userId, { ...params, limit, offset })
-    return {
-      events: events.map((e) => ({
-        ...e,
-        eventTypeDisplayName: getEventTypeDisplayName(e.eventType),
-      })),
-      total,
-      limit,
-      offset,
+    try {
+      const limit = params.limit ?? 50
+      const offset = params.offset ?? 0
+      const [events, total] = await this.usersRepo.findEventFeed(userId, { ...params, limit, offset })
+      return {
+        events: events.map((e) => ({
+          ...e,
+          eventTypeDisplayName: getEventTypeDisplayName(e.eventType),
+        })),
+        total,
+        limit,
+        offset,
+      }
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: UsersService.name,
+        method: 'getEventFeed',
+        operation: 'fetchUserEventFeed',
+        safeMessage: 'Unable to load user event feed right now.',
+        metadata: { userId, params },
+      })
     }
   }
 

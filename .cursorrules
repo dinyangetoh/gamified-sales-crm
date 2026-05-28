@@ -1,0 +1,12 @@
+## Cursor Rules
+
+- Service shared contracts must live in `I<ServiceName>.ts`.
+- Repository/domain contracts must live in `<Domain>Model.ts`.
+- No inline `interface`/`type` declarations inside service or processor implementation files.
+- Public service/repository methods must have explicit return types.
+- Keep services/repositories lean and responsibility-focused.
+- Use one top-level try/catch per public service method.
+- Avoid nested try/catch blocks in the same method.
+- For cache pass-through paths, use graceful fallback (`.catch` + warn) instead of dedicated try/catch.
+- Log structured context on errors and throw safe Nest exceptions for HTTP consumers.
+- Do not change `2xx` response body shapes unless explicitly requested.

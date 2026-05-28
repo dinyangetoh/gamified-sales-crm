@@ -1,4 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common'
+import {
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common'
 import { CACHE_ADAPTER, ICacheAdapter } from '../../common/cache/ICacheAdapter'
 import { CacheKey } from '../../common/cache/CacheKey'
 import { CACHE_TTL_LEADERBOARD } from '../scoring/constants'
@@ -8,6 +12,7 @@ import { dedupeBadgeAwards } from '../../common/helpers/badges/badgeDisplayHelpe
 import { ScoringConfig } from '../../common/config/scoringConfig.schema'
 import { LeaderboardRepository } from './LeaderboardRepository'
 import { ScoringConfigService } from '../scoring/ScoringConfigService'
+import { handleServiceError } from '../../common/errors/ServiceErrorHandler'
 import type {
   AllTimeLeaderboardEntry,
   AllTimeLeaderboardResult,
@@ -17,6 +22,8 @@ import type {
 
 @Injectable()
 export class LeaderboardService {
+  private readonly logger = new Logger(LeaderboardService.name)
+
   constructor(
     private readonly leaderboardRepo: LeaderboardRepository,
     private readonly scoringConfigService: ScoringConfigService,
@@ -24,45 +31,64 @@ export class LeaderboardService {
   ) {}
 
   async getWeeklyLeaderboard(isoWeek?: string): Promise<WeeklyLeaderboardResult> {
-    const week = isoWeek ?? currentIsoWeek()
-    const prevWeek = previousIsoWeek(week)
-    const cacheKey = CacheKey.leaderboard(week)
+    try {
+      const week = isoWeek ?? currentIsoWeek()
+      const prevWeek = previousIsoWeek(week)
+      const cacheKey = CacheKey.leaderboard(week)
 
-    const cached = await this.cache.get(cacheKey)
-    if (cached) return { ...(cached as WeeklyLeaderboardResult), fromCache: true }
+      const cached = (await this.cache.get(cacheKey)) as WeeklyLeaderboardResult | null
+      if (cached) return { ...cached, fromCache: true }
 
-    const [weekStats, prevWeekStats, { levels }] = await Promise.all([
-      this.leaderboardRepo.findWeeklyStats(week),
-      this.leaderboardRepo.findWeeklyStats(prevWeek),
-      this.scoringConfigService.getConfig(),
-    ])
+      const [weekStats, prevWeekStats, { levels }] = await Promise.all([
+        this.leaderboardRepo.findWeeklyStats(week),
+        this.leaderboardRepo.findWeeklyStats(prevWeek),
+        this.scoringConfigService.getConfig(),
+      ])
 
-    const prevRankByUserId = new Map(prevWeekStats.map((ws, idx) => [ws.userId, idx + 1]))
+      const prevRankByUserId = new Map(prevWeekStats.map((ws, idx) => [ws.userId, idx + 1]))
 
-    const entries = weekStats.map((ws, idx) =>
-      this.buildWeeklyEntry(ws, idx, weekStats, prevRankByUserId, levels),
-    )
+      const entries = weekStats.map((ws, idx) =>
+        this.buildWeeklyEntry(ws, idx, weekStats, prevRankByUserId, levels),
+      )
 
-    const result = { week, generatedAt: new Date(), fromCache: false, entries }
-    await this.cache.set(cacheKey, result, CACHE_TTL_LEADERBOARD)
-    return result
+      const result = { week, generatedAt: new Date(), fromCache: false, entries }
+      await this.cache.set(cacheKey, result, CACHE_TTL_LEADERBOARD)
+      return result
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: LeaderboardService.name,
+        method: 'getWeeklyLeaderboard',
+        operation: 'fetchLeaderboardData',
+        safeMessage: 'Failed to load weekly leaderboard data.',
+        metadata: { isoWeek },
+      })
+    }
   }
 
   async getAllTimeLeaderboard(): Promise<AllTimeLeaderboardResult> {
-    const cacheKey = CacheKey.leaderboardAllTime()
-    const cached = await this.cache.get(cacheKey)
-    if (cached) return { ...(cached as AllTimeLeaderboardResult), fromCache: true }
+    try {
+      const cacheKey = CacheKey.leaderboardAllTime()
+      const cached = (await this.cache.get(cacheKey)) as AllTimeLeaderboardResult | null
+      if (cached) return { ...cached, fromCache: true }
 
-    const [allStats, { levels }] = await Promise.all([
-      this.leaderboardRepo.findAllUserStats(),
-      this.scoringConfigService.getConfig(),
-    ])
+      const [allStats, { levels }] = await Promise.all([
+        this.leaderboardRepo.findAllUserStats(),
+        this.scoringConfigService.getConfig(),
+      ])
 
-    const entries = allStats.map((s, idx) => this.buildAllTimeEntry(s, idx, allStats, levels))
+      const entries = allStats.map((s, idx) => this.buildAllTimeEntry(s, idx, allStats, levels))
 
-    const result = { generatedAt: new Date(), fromCache: false, entries }
-    await this.cache.set(cacheKey, result, CACHE_TTL_LEADERBOARD)
-    return result
+      const result = { generatedAt: new Date(), fromCache: false, entries }
+      await this.cache.set(cacheKey, result, CACHE_TTL_LEADERBOARD)
+      return result
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: LeaderboardService.name,
+        method: 'getAllTimeLeaderboard',
+        operation: 'fetchLeaderboardData',
+        safeMessage: 'Failed to load all-time leaderboard data.',
+      })
+    }
   }
 
   private buildWeeklyEntry(

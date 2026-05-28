@@ -5,6 +5,7 @@ import { BadgeType, User } from '@db'
 import { BADGE_DEFINITIONS } from '../badges/badgeDefinitions'
 import { NotificationsRepository } from './NotificationsRepository'
 import { EMAIL_TEMPLATES, type EmailTemplateId, getEmailTemplateById } from './emailTemplates'
+import { handleServiceError } from '../../common/errors/ServiceErrorHandler'
 import type {
   BadgeUnlockTestEmailParams,
   ListNotificationLogsParams,
@@ -36,51 +37,71 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async sendBadgeUnlock(userId: string, badgeType: BadgeType): Promise<void> {
-    const user = await this.notificationsRepo.findUserById(userId)
-    if (!user) return
+    try {
+      const user = await this.notificationsRepo.findUserById(userId)
+      if (!user) return
 
-    const def = BADGE_DEFINITIONS.find((d) => d.type === badgeType)
+      const def = BADGE_DEFINITIONS.find((d) => d.type === badgeType)
 
-    await this.notificationsRepo.createNotificationLog({
-      userId,
-      type: 'BADGE_UNLOCK',
-      metadata: { badgeType, displayName: def?.displayName },
-    })
+      await this.notificationsRepo.createNotificationLog({
+        userId,
+        type: 'BADGE_UNLOCK',
+        metadata: { badgeType, displayName: def?.displayName },
+      })
 
-    if (!this.emailEnabled || !this.resend) {
-      this.logger.debug({ userId, badgeType }, 'Email skipped — no API key')
-      return
+      if (!this.emailEnabled || !this.resend) {
+        this.logger.debug({ userId, badgeType }, 'Email skipped — no API key')
+        return
+      }
+
+      await this.resend.emails.send({
+        from: 'gamification@yourdomain.com',
+        to: user.email,
+        subject: `🏆 You earned the "${def?.displayName}" badge!`,
+        html: `<p>Congratulations ${user.name}! You just unlocked the <strong>${def?.displayName}</strong> badge.</p><p>${def?.description}</p>`,
+      })
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: NotificationsService.name,
+        method: 'sendBadgeUnlock',
+        operation: 'sendBadgeUnlockNotification',
+        safeMessage: 'Unable to send badge unlock notification right now.',
+        metadata: { userId, badgeType },
+      })
     }
-
-    await this.resend.emails.send({
-      from: 'gamification@yourdomain.com',
-      to: user.email,
-      subject: `🏆 You earned the "${def?.displayName}" badge!`,
-      html: `<p>Congratulations ${user.name}! You just unlocked the <strong>${def?.displayName}</strong> badge.</p><p>${def?.description}</p>`,
-    })
   }
 
   async sendStreakRisk(userId: string, streak: number): Promise<void> {
-    const user = await this.notificationsRepo.findUserById(userId)
-    if (!user) return
+    try {
+      const user = await this.notificationsRepo.findUserById(userId)
+      if (!user) return
 
-    await this.notificationsRepo.createNotificationLog({
-      userId,
-      type: 'STREAK_RISK',
-      metadata: { streak },
-    })
+      await this.notificationsRepo.createNotificationLog({
+        userId,
+        type: 'STREAK_RISK',
+        metadata: { streak },
+      })
 
-    if (!this.emailEnabled || !this.resend) {
-      this.logger.debug({ userId, streak }, 'Email skipped — no API key')
-      return
+      if (!this.emailEnabled || !this.resend) {
+        this.logger.debug({ userId, streak }, 'Email skipped — no API key')
+        return
+      }
+
+      await this.resend.emails.send({
+        from: 'gamification@yourdomain.com',
+        to: user.email,
+        subject: `🔥 Your ${streak}-day streak is at risk!`,
+        html: `<p>Hi ${user.name}, log an activity today to keep your ${streak}-day streak alive!</p>`,
+      })
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: NotificationsService.name,
+        method: 'sendStreakRisk',
+        operation: 'sendStreakRiskNotification',
+        safeMessage: 'Unable to send streak-risk notification right now.',
+        metadata: { userId, streak },
+      })
     }
-
-    await this.resend.emails.send({
-      from: 'gamification@yourdomain.com',
-      to: user.email,
-      subject: `🔥 Your ${streak}-day streak is at risk!`,
-      html: `<p>Hi ${user.name}, log an activity today to keep your ${streak}-day streak alive!</p>`,
-    })
   }
 
   async hasNotificationToday(userId: string, type: string): Promise<boolean> {
@@ -89,39 +110,69 @@ export class NotificationsService implements OnModuleInit {
     const tomorrow = new Date(today)
     tomorrow.setDate(today.getDate() + 1)
 
-    const existing = await this.notificationsRepo.findNotificationToday(
-      userId,
-      type,
-      today,
-      tomorrow,
-    )
-    return !!existing
+    try {
+      const existing = await this.notificationsRepo.findNotificationToday(
+        userId,
+        type,
+        today,
+        tomorrow,
+      )
+      return !!existing
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: NotificationsService.name,
+        method: 'hasNotificationToday',
+        operation: 'findNotificationToday',
+        safeMessage: 'Unable to verify notification status right now.',
+        metadata: { userId, type },
+      })
+    }
   }
 
   async listNotificationLogs(
     params: ListNotificationLogsParams,
   ): Promise<{ items: Awaited<ReturnType<NotificationsRepository['findNotificationLogs']>>[0]; total: number; limit: number; offset: number }> {
-    const [items, total] = await this.notificationsRepo.findNotificationLogs(params)
-    return { items, total, limit: params.limit, offset: params.offset }
+    try {
+      const [items, total] = await this.notificationsRepo.findNotificationLogs(params)
+      return { items, total, limit: params.limit, offset: params.offset }
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: NotificationsService.name,
+        method: 'listNotificationLogs',
+        operation: 'findNotificationLogs',
+        safeMessage: 'Unable to load notification logs right now.',
+        metadata: params,
+      })
+    }
   }
 
   async sendTestEmail(params: SendTestEmailParams): Promise<{ accepted: boolean }> {
-    const template = getEmailTemplateById(params.templateId)
-    if (!template) return { accepted: false }
+    try {
+      const template = getEmailTemplateById(params.templateId)
+      if (!template) return { accepted: false }
 
-    const effectiveUserId = params.userId ?? params.actorUserId
-    const user = await this.notificationsRepo.findUserById(effectiveUserId)
-    if (!user) return { accepted: false }
+      const effectiveUserId = params.userId ?? params.actorUserId
+      const user = await this.notificationsRepo.findUserById(effectiveUserId)
+      if (!user) return { accepted: false }
 
-    if (params.templateId === 'BADGE_UNLOCK') {
-      return this.sendBadgeUnlockTestEmail(params, user, template.defaultBadgeType)
+      if (params.templateId === 'BADGE_UNLOCK') {
+        return this.sendBadgeUnlockTestEmail(params, user, template.defaultBadgeType)
+      }
+
+      if (params.templateId === 'STREAK_RISK') {
+        return this.sendStreakRiskTestEmail(params, user, template.defaultStreak ?? 5)
+      }
+
+      return { accepted: false }
+    } catch (error) {
+      handleServiceError(this.logger, error, {
+        service: NotificationsService.name,
+        method: 'sendTestEmail',
+        operation: 'sendTestNotificationEmail',
+        safeMessage: 'Unable to send test notification email right now.',
+        metadata: { templateId: params.templateId, toEmail: params.toEmail },
+      })
     }
-
-    if (params.templateId === 'STREAK_RISK') {
-      return this.sendStreakRiskTestEmail(params, user, template.defaultStreak ?? 5)
-    }
-
-    return { accepted: false }
   }
 
   private async sendBadgeUnlockTestEmail(
