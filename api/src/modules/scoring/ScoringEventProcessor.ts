@@ -55,9 +55,17 @@ export class ScoringEventProcessor {
       const eventContext = await this.prepareEventContext(input, provider, timestamp)
       const { stats, badgeResult } = await this.persistScoredEvent(eventContext)
 
-      await this.invalidateLeaderboardCache(eventContext.isoWeek).catch(() => undefined)
+      this.runInBackground(
+        'invalidateLeaderboardCache',
+        this.invalidateLeaderboardCache(eventContext.isoWeek),
+        { isoWeek: eventContext.isoWeek, eventId: input.eventId, userId: input.userId },
+      )
 
-      await this.enqueuePostEventNotifications(eventContext, badgeResult).catch(() => undefined)
+      this.runInBackground(
+        'enqueuePostEventNotifications',
+        this.enqueuePostEventNotifications(eventContext, badgeResult),
+        { isoWeek: eventContext.isoWeek, eventId: input.eventId, userId: input.userId },
+      )
 
       return this.buildSuccessEventResult(eventContext, stats, badgeResult)
     } catch (error) {
@@ -285,6 +293,26 @@ export class ScoringEventProcessor {
         badge: unlockedBadgeType,
       })
     }
+  }
+
+  private runInBackground(
+    operation: string,
+    task: Promise<unknown>,
+    metadata?: Record<string, unknown>,
+  ): void {
+    void task.catch((error) => {
+      this.logger.warn(
+        {
+          service: ScoringEventProcessor.name,
+          method: 'processEvent',
+          operation,
+          metadata,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
+        'Non-blocking side effect failed',
+      )
+    })
   }
 
   private buildSuccessEventResult(
